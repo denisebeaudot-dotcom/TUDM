@@ -165,6 +165,7 @@ enum SegmentKind: String, CaseIterable, Codable, Hashable {
     case returnZone = "Return Zone"
     case column = "Column"
     case bookcase = "Bookcase"
+    case shelf = "Shelf"
     case beam = "Beam"
     case casing = "Casing"
     case trim = "Trim"
@@ -603,6 +604,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
     var opening: OpeningSpec?
     var shelfCount: Int?
     var shelfDepth: Double?          // inches; how far shelves project from wall
+    var shelfThickness: Double?      // inches; plank thickness of each shelf (kind == .shelf)
+    var shelfSpacedEvenly: Bool?     // when true, multiple shelves auto-distribute vertically
     var isFloorToCeiling: Bool?
     var beamPosition: BeamPosition?  // only used when kind == .beam
     var wallVariant: WallVariant?    // only used when kind == .wall or .wallSpace
@@ -620,6 +623,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
         opening: OpeningSpec? = nil,
         shelfCount: Int? = nil,
         shelfDepth: Double? = nil,
+        shelfThickness: Double? = nil,
+        shelfSpacedEvenly: Bool? = nil,
         isFloorToCeiling: Bool? = nil,
         beamPosition: BeamPosition? = nil,
         wallVariant: WallVariant? = nil,
@@ -636,6 +641,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.opening = opening
         self.shelfCount = shelfCount
         self.shelfDepth = shelfDepth
+        self.shelfThickness = shelfThickness
+        self.shelfSpacedEvenly = shelfSpacedEvenly
         self.isFloorToCeiling = isFloorToCeiling
         self.beamPosition = beamPosition
         self.wallVariant = wallVariant
@@ -647,7 +654,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
     
     enum CodingKeys: String, CodingKey {
         case id, label, width, kind, note
-        case opening, shelfCount, shelfDepth, isFloorToCeiling, beamPosition
+        case opening, shelfCount, shelfDepth, shelfThickness, shelfSpacedEvenly, isFloorToCeiling, beamPosition
         case wallVariant, kneeWallHeight, cathedralPeakHeight, cathedralPeakOffset, archRise
     }
     
@@ -661,6 +668,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.opening = try c.decodeIfPresent(OpeningSpec.self, forKey: .opening)
         self.shelfCount = try c.decodeIfPresent(Int.self, forKey: .shelfCount)
         self.shelfDepth = try c.decodeIfPresent(Double.self, forKey: .shelfDepth)
+        self.shelfThickness = try c.decodeIfPresent(Double.self, forKey: .shelfThickness)
+        self.shelfSpacedEvenly = try c.decodeIfPresent(Bool.self, forKey: .shelfSpacedEvenly)
         self.isFloorToCeiling = try c.decodeIfPresent(Bool.self, forKey: .isFloorToCeiling)
         self.beamPosition = try c.decodeIfPresent(BeamPosition.self, forKey: .beamPosition)
         self.wallVariant = try c.decodeIfPresent(WallVariant.self, forKey: .wallVariant)

@@ -329,6 +329,8 @@ struct WallElevationView: View {
             columnView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .bookcase:
             bookcaseView(segment: seg, width: width, wallHeight: wallHeight)
+        case .shelf:
+            shelfSegmentView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .beam:
             beamSegmentView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .baseboard, .crown, .trim, .casing:
@@ -489,6 +491,59 @@ struct WallElevationView: View {
             .fill(Color.brown.opacity(0.5))
             .frame(width: width, height: 0.75)
             .offset(x: 0, y: y)
+    }
+    
+    private func shelfSegmentView(segment: WallSegment, width: Double, wallHeight: Double, scale: Double) -> some View {
+        // Standalone shelf(s). Segment width sets the horizontal span already.
+        // Vertical placement: evenly distributed across the full wall height when Spaced Evenly is on.
+        // Shelf Thickness controls the drawn plank thickness in inches (× scale).
+        let count = max(1, segment.shelfCount ?? 1)
+        let thicknessPx = max(1.0, (segment.shelfThickness ?? 1.5) * scale)
+        let spacedEvenly = segment.shelfSpacedEvenly ?? true
+        let labelText = segment.label.isEmpty ? "SF" : segment.label
+        
+        // Compute y positions (top of each plank) measured from top of wall.
+        // Evenly: divide wall into count+1 gaps; shelves sit at gap boundaries.
+        // Fallback (Spaced Evenly off): stack from bottom, 12in gaps.
+        var planks: [Double] = []
+        if spacedEvenly {
+            let step = wallHeight / Double(count + 1)
+            for i in 0..<count {
+                let centerFromTop = step * Double(i + 1)
+                planks.append(max(0, centerFromTop - thicknessPx / 2))
+            }
+        } else {
+            let gapPx = 12.0 * scale
+            for i in 0..<count {
+                let centerFromBottom = gapPx * Double(i + 1)
+                let yTop = wallHeight - centerFromBottom - thicknessPx / 2
+                planks.append(max(0, yTop))
+            }
+        }
+        
+        return ZStack(alignment: .topLeading) {
+            // Transparent framing rectangle so layout stays width × wallHeight
+            Color.clear.frame(width: width, height: wallHeight)
+            
+            ForEach(Array(planks.enumerated()), id: \.offset) { _, yTop in
+                Rectangle()
+                    .fill(Color.brown.opacity(0.55))
+                    .overlay(Rectangle().stroke(Color.brown.opacity(0.9), lineWidth: 0.75))
+                    .frame(width: width, height: thicknessPx)
+                    .offset(y: yTop)
+            }
+            
+            if showsLabels {
+                Text(labelText)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Color(.systemBackground).opacity(0.9))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .frame(width: width, height: wallHeight, alignment: .topLeading)
     }
     
     @ViewBuilder

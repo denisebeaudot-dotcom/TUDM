@@ -188,6 +188,7 @@ struct WallFormView: View {
         .wall,
         .column,
         .bookcase,
+        .shelf,
         .windowUnit,
         .door,
         .opening,
@@ -716,6 +717,8 @@ struct WallFormView: View {
         copy.opening = source.opening
         copy.shelfCount = source.shelfCount
         copy.shelfDepth = source.shelfDepth
+        copy.shelfThickness = source.shelfThickness
+        copy.shelfSpacedEvenly = source.shelfSpacedEvenly
         copy.isFloorToCeiling = source.isFloorToCeiling
         copy.beamPosition = source.beamPosition
         copy.wallVariant = source.wallVariant
@@ -736,6 +739,7 @@ struct WallFormView: View {
         case .wall: prefix = "W"
         case .column: prefix = "C"
         case .bookcase: prefix = "SH"
+        case .shelf: prefix = "SF"
         case .windowUnit: prefix = "WIN"
         case .door: prefix = "DR"
         case .opening: prefix = "OP"
@@ -758,6 +762,7 @@ struct WallFormView: View {
         case .door: return 36
         case .opening: return 36
         case .bookcase: return 36
+        case .shelf: return 24
         case .baseboard: return d.baseboardHeight
         case .crown: return d.crownHeight
         case .casing, .trim: return 4
@@ -775,6 +780,7 @@ struct WallFormView: View {
         case .wall: return "W"
         case .column: return "C"
         case .bookcase: return "SH"
+        case .shelf: return "SF"
         case .windowUnit: return "WIN"
         case .door: return "DR"
         case .opening: return "OP"
@@ -858,6 +864,13 @@ struct WallFormView: View {
             if segment.shelfCount == nil { segment.shelfCount = 5 }
             if segment.shelfDepth == nil { segment.shelfDepth = 12 }
             if segment.isFloorToCeiling == nil { segment.isFloorToCeiling = true }
+            
+        case .shelf:
+            if segment.width <= 0 { segment.width = 24 }
+            if segment.shelfCount == nil { segment.shelfCount = 1 }
+            if segment.shelfDepth == nil { segment.shelfDepth = 10 }
+            if segment.shelfThickness == nil { segment.shelfThickness = 1.5 }
+            if segment.shelfSpacedEvenly == nil { segment.shelfSpacedEvenly = true }
             
         case .wall, .wallSpace, .returnZone:
             if segment.width <= 0 { segment.width = 24 }
@@ -1304,6 +1317,24 @@ struct SegmentDetailForm: View {
                 }
             }
             
+            if segment.kind == .shelf {
+                Section {
+                    StepperFieldRow(title: "Shelf Width", value: shelfWidthBinding, step: 1)
+                    StepperFieldRow(title: "Shelf Depth", value: shelfDepthBinding, step: 0.5)
+                    StepperFieldRow(title: "Shelf Thickness", value: shelfThicknessBinding, step: 0.25)
+                    StepperIntFieldRow(title: "Shelf Count", value: shelfCountBinding, step: 1, minimum: 1, maximum: 20)
+                    if shelfCountBinding.wrappedValue > 1 {
+                        Toggle("Spaced Evenly", isOn: shelfSpacedEvenlyBinding)
+                    }
+                } header: {
+                    Text("Shelf")
+                } footer: {
+                    Text("Shelf Width sets this segment's width on the wall. When Shelf Count is greater than 1, Spaced Evenly distributes shelves vertically across the wall height.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            
             if segment.kind == .beam {
                 Section {
                     Picker("Position", selection: beamPositionBinding) {
@@ -1698,6 +1729,27 @@ struct SegmentDetailForm: View {
         Binding(
             get: { segment.shelfDepth ?? 12 },
             set: { segment.shelfDepth = $0 }
+        )
+    }
+    
+    private var shelfThicknessBinding: Binding<Double> {
+        Binding(
+            get: { segment.shelfThickness ?? 1.5 },
+            set: { segment.shelfThickness = $0 }
+        )
+    }
+    
+    private var shelfWidthBinding: Binding<Double> {
+        Binding(
+            get: { segment.width },
+            set: { segment.width = $0 }
+        )
+    }
+    
+    private var shelfSpacedEvenlyBinding: Binding<Bool> {
+        Binding(
+            get: { segment.shelfSpacedEvenly ?? true },
+            set: { segment.shelfSpacedEvenly = $0 }
         )
     }
     

@@ -251,6 +251,33 @@ enum WallSceneBuilder {
                 )
                 root.addChild(beam)
                 
+            case .shelf:
+                let count = max(1, seg.shelfCount ?? 1)
+                let depth = max(0.25, seg.shelfDepth ?? 10)
+                let thickness = max(0.25, seg.shelfThickness ?? 1.5)
+                let spacedEvenly = seg.shelfSpacedEvenly ?? true
+                for i in 0..<count {
+                    let centerY: Double
+                    if spacedEvenly {
+                        let step = ceilingH / Double(count + 1)
+                        centerY = step * Double(i + 1)
+                    } else {
+                        centerY = 12.0 * Double(i + 1)
+                    }
+                    let shelfMesh = MeshResource.generateBox(
+                        width: Float(segW * metersPerInch),
+                        height: Float(thickness * metersPerInch),
+                        depth: Float(depth * metersPerInch)
+                    )
+                    let shelfEntity = ModelEntity(mesh: shelfMesh, materials: [limedOak])
+                    shelfEntity.position = SIMD3<Float>(
+                        Float(segXCenter * metersPerInch),
+                        Float(centerY * metersPerInch),
+                        Float((depth / 2) * metersPerInch)
+                    )
+                    root.addChild(shelfEntity)
+                }
+                
             default:
                 break
             }
