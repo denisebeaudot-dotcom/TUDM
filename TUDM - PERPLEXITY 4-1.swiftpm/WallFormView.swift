@@ -2019,24 +2019,49 @@ struct PanelEditorRow: View {
     let resolvedInches: Double
     
     var body: some View {
-        HStack {
-            Text("Panel \(index + 1)")
-                .font(.subheadline.weight(.semibold))
-            Spacer()
-            Button {
-                panel.hasMuntinGrid.toggle()
-            } label: {
-                Text(panel.hasMuntinGrid ? "Grid On" : "Grid Off")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(panel.hasMuntinGrid ? Color.green : Color.gray)
-                    )
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Panel \(index + 1)")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("\(String(format: "%.2f", resolvedInches))\"")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            
+            StepperFieldRow(title: "Width (Share)", value: $panel.widthShare, step: 1)
+            
+            HStack(spacing: 10) {
+                Button {
+                    panel.hasMullions.toggle()
+                } label: {
+                    Text(panel.hasMullions ? "Mullion On" : "Mullion Off")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(panel.hasMullions ? Color.purple : Color.gray)
+                        )
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    panel.hasMuntinGrid.toggle()
+                } label: {
+                    Text(panel.hasMuntinGrid ? "Grid On" : "Grid Off")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(panel.hasMuntinGrid ? Color.green : Color.gray)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.vertical, 4)
     }
