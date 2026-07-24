@@ -41,6 +41,8 @@ struct WallFormView: View {
     @State private var showingInsertPicker = false
     @State private var isLegendExpanded: Bool = true
     @State private var previewMode: WallPreviewMode = .ortho
+    @State private var showingNameRequiredAlert: Bool = false
+    @State private var showingDiscardConfirm: Bool = false
     
     enum WallPreviewMode: String, CaseIterable, Identifiable {
         case ortho = "Ortho"
@@ -181,6 +183,12 @@ struct WallFormView: View {
     private var isEditingExistingWall: Bool {
         if case .edit = mode { return true }
         return false
+    }
+    
+    private var isCreateMode: Bool { !isEditingExistingWall }
+    
+    private var isNameMissing: Bool {
+        draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     private let insertableKinds: [SegmentKind] = [
@@ -423,6 +431,22 @@ struct WallFormView: View {
                 // When any segment's kind changes (via the detail sheet Picker), re-run column numbering.
                 renumberColumns()
             }
+            .interactiveDismissDisabled(isCreateMode)
+            .alert("Wall Name Required", isPresented: $showingNameRequiredAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Please enter a Wall Name before saving. If you want to abandon this wall, tap Cancel then Discard.")
+            }
+            .confirmationDialog(
+                "Discard this wall?",
+                isPresented: $showingDiscardConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Discard", role: .destructive) { dismiss() }
+                Button("Keep Editing", role: .cancel) { }
+            } message: {
+                Text("Any changes to this new wall will be lost.")
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -430,14 +454,23 @@ struct WallFormView: View {
                 }
                 
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        if isCreateMode {
+                            showingDiscardConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditingExistingWall ? "Update" : "Save") {
-                        saveDraft()
+                        if isNameMissing {
+                            showingNameRequiredAlert = true
+                        } else {
+                            saveDraft()
+                        }
                     }
-                    .disabled(!isValid)
                 }
             }
             .sheet(item: $editingSegmentID) { segmentID in
