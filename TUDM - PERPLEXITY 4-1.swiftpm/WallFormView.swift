@@ -720,6 +720,7 @@ struct WallFormView: View {
         copy.shelfThickness = source.shelfThickness
         copy.shelfSpacedEvenly = source.shelfSpacedEvenly
         copy.isFloorToCeiling = source.isFloorToCeiling
+        copy.isSharedCorner = source.isSharedCorner
         copy.beamPosition = source.beamPosition
         copy.wallVariant = source.wallVariant
         copy.kneeWallHeight = source.kneeWallHeight
@@ -1309,6 +1310,18 @@ struct SegmentDetailForm: View {
                     .foregroundStyle(.tertiary)
             }
             
+            if segment.kind == .column {
+                Section {
+                    Toggle("Shared Corner", isOn: sharedCornerBinding)
+                } header: {
+                    Text("Column")
+                } footer: {
+                    Text("Turn on when this column sits at a room corner and is shared with the adjacent wall. Used for cross-wall numbering in the future floorplan view.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            
             if segment.kind == .bookcase {
                 Section("Bookcase") {
                     StepperIntFieldRow(title: "Shelf Count", value: shelfCountBinding, step: 1, minimum: 1, maximum: 12)
@@ -1736,6 +1749,13 @@ struct SegmentDetailForm: View {
         Binding(
             get: { segment.shelfThickness ?? 1.5 },
             set: { segment.shelfThickness = $0 }
+        )
+    }
+    
+    private var sharedCornerBinding: Binding<Bool> {
+        Binding(
+            get: { segment.isSharedCorner ?? false },
+            set: { segment.isSharedCorner = $0 }
         )
     }
     

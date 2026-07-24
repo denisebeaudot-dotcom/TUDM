@@ -607,6 +607,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
     var shelfThickness: Double?      // inches; plank thickness of each shelf (kind == .shelf)
     var shelfSpacedEvenly: Bool?     // when true, multiple shelves auto-distribute vertically
     var isFloorToCeiling: Bool?
+    var isSharedCorner: Bool?        // only used when kind == .column; flags a corner column shared with an adjacent wall
     var beamPosition: BeamPosition?  // only used when kind == .beam
     var wallVariant: WallVariant?    // only used when kind == .wall or .wallSpace
     var kneeWallHeight: Double?      // inches AFF; only when wallVariant == .kneeWall
@@ -626,6 +627,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
         shelfThickness: Double? = nil,
         shelfSpacedEvenly: Bool? = nil,
         isFloorToCeiling: Bool? = nil,
+        isSharedCorner: Bool? = nil,
         beamPosition: BeamPosition? = nil,
         wallVariant: WallVariant? = nil,
         kneeWallHeight: Double? = nil,
@@ -644,6 +646,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.shelfThickness = shelfThickness
         self.shelfSpacedEvenly = shelfSpacedEvenly
         self.isFloorToCeiling = isFloorToCeiling
+        self.isSharedCorner = isSharedCorner
         self.beamPosition = beamPosition
         self.wallVariant = wallVariant
         self.kneeWallHeight = kneeWallHeight
@@ -654,7 +657,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
     
     enum CodingKeys: String, CodingKey {
         case id, label, width, kind, note
-        case opening, shelfCount, shelfDepth, shelfThickness, shelfSpacedEvenly, isFloorToCeiling, beamPosition
+        case opening, shelfCount, shelfDepth, shelfThickness, shelfSpacedEvenly, isFloorToCeiling, isSharedCorner, beamPosition
         case wallVariant, kneeWallHeight, cathedralPeakHeight, cathedralPeakOffset, archRise
     }
     
@@ -671,6 +674,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.shelfThickness = try c.decodeIfPresent(Double.self, forKey: .shelfThickness)
         self.shelfSpacedEvenly = try c.decodeIfPresent(Bool.self, forKey: .shelfSpacedEvenly)
         self.isFloorToCeiling = try c.decodeIfPresent(Bool.self, forKey: .isFloorToCeiling)
+        self.isSharedCorner = try c.decodeIfPresent(Bool.self, forKey: .isSharedCorner)
         self.beamPosition = try c.decodeIfPresent(BeamPosition.self, forKey: .beamPosition)
         self.wallVariant = try c.decodeIfPresent(WallVariant.self, forKey: .wallVariant)
         self.kneeWallHeight = try c.decodeIfPresent(Double.self, forKey: .kneeWallHeight)

@@ -387,12 +387,31 @@ struct WallElevationView: View {
         let clampedH = min(colH, wallHeight)
         let yOffset = wallHeight - clampedH
         let label = showsLabels ? segment.label : nil
+        let isShared = segment.isSharedCorner ?? false
         return Rectangle()
             .fill(Color.gray.opacity(0.55))
             .overlay(
                 ZStack {
-                    Rectangle().stroke(Color.gray, lineWidth: 1)
+                    Rectangle().stroke(isShared ? Color.orange : Color.gray, lineWidth: isShared ? 1.5 : 1)
                     labelOverlay(label: label)
+                    if isShared {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text("S")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 3)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(Color.orange)
+                                    )
+                                    .padding(2)
+                            }
+                            Spacer()
+                        }
+                    }
                 }
             )
             .frame(width: width, height: clampedH)
