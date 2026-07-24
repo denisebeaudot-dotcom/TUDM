@@ -1402,7 +1402,7 @@ struct SegmentDetailForm: View {
                 } header: {
                     Text("Panels")
                 } footer: {
-                    Text("Mullions are set per panel below via each panel's Mullion toggle. Adjacent panels that both have Mullion On show a vertical mullion between them.")
+                    Text("Enter each panel's width in inches below. Mullions between panels are configured in the Mullions Between Panels section.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -1410,7 +1410,7 @@ struct SegmentDetailForm: View {
                 if panelCountBinding.wrappedValue >= 1 && (isWindow || segment.kind == .opening) {
                     Section {
                         LabeledContent("Available Panel Width", value: formatted(availablePanelWidth))
-                        LabeledContent("Sum of Shares", value: formatted(sumOfShares))
+                        LabeledContent("Sum of Widths", value: formatted(sumOfShares))
                         HStack {
                             Button {
                                 distributePanelsEqually()
@@ -1440,7 +1440,7 @@ struct SegmentDetailForm: View {
                     } header: {
                         Text("Per-Panel Configuration")
                     } footer: {
-                        Text("Each panel's width = Available × (its share ÷ total shares). Operation selects casement, awning, sliding, etc. per panel.")
+                        Text("Enter each panel's Width in inches. Sum should equal Available Panel Width. Use Distribute Equally to auto-split.")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
@@ -1987,11 +1987,13 @@ struct SegmentDetailForm: View {
         if opening.panels.count != target {
             if opening.panels.count < target {
                 let toAdd = target - opening.panels.count
+                // Seed new panels with an even split of available width so widths read as inches out of the box.
+                let evenWidth = availablePanelWidth / Double(target)
                 for i in 0..<toAdd {
                     let existingCount = opening.panels.count
                     opening.panels.append(WindowPanel(
                         label: defaultPanelLabel(index: existingCount + i, total: target),
-                        widthShare: 1,
+                        widthShare: evenWidth > 0 ? evenWidth : 1,
                         operation: .fixed,
                         hasMuntinGrid: true
                     ))
@@ -2049,8 +2051,11 @@ struct SegmentDetailForm: View {
     
     private func distributePanelsEqually() {
         guard var opening = segment.opening else { return }
-        for i in 0..<opening.panels.count {
-            opening.panels[i].widthShare = 1
+        let count = opening.panels.count
+        guard count > 0 else { return }
+        let each = availablePanelWidth / Double(count)
+        for i in 0..<count {
+            opening.panels[i].widthShare = each
         }
         segment.opening = opening
     }
@@ -2146,7 +2151,7 @@ struct PanelEditorRow: View {
                     .foregroundStyle(.secondary)
             }
             
-            StepperFieldRow(title: "Width (Share)", value: $panel.widthShare, step: 1)
+            StepperFieldRow(title: "Width (in)", value: $panel.widthShare, step: 1)
             
             Button {
                 panel.hasMuntinGrid.toggle()
