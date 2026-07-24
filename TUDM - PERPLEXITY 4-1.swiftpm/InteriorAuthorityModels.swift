@@ -366,6 +366,9 @@ struct OpeningSpec: Codable, Hashable {
     var muntinWidth: Double = 0.75     // face width of each muntin bar
     var panels: [WindowPanel] = []     // optional per-panel overrides
     var mullionLayoutPreset: MullionLayoutPreset = .grid  // how mullions are placed
+    // Per-seam mullion On/Off. For N panels there are N-1 seams; index i is between panel i and panel i+1.
+    // If empty (legacy data) the renderer falls back to the per-panel hasMullions adjacency rule.
+    var mullionSeams: [Bool] = []
     
     // Frame & material
     var frameWidth: Double = 2         // face width of the outer frame
@@ -404,7 +407,7 @@ struct OpeningSpec: Codable, Hashable {
         case openingWidth, openingHeight, sillOrBottomAFF
         case casingLeft, casingRight, casingHead, casingBottom, casingWidth, topCasingIsCrown, wallSpaceAboveUnit
         case panelCount, mullionsVertical, mullionsHorizontal, mullionWidth
-        case muntinsRows, muntinsCols, muntinWidth, panels, mullionLayoutPreset
+        case muntinsRows, muntinsCols, muntinWidth, panels, mullionLayoutPreset, mullionSeams
         case frameWidth, jambDepth, frameMaterial, glazing
         case sillProjection, interiorStoolProjection, apronHeight
         case isEgress, hasScreens, uFactor, shgc, manufacturer, modelNumber
@@ -518,6 +521,7 @@ struct OpeningSpec: Codable, Hashable {
         self.muntinWidth = try c.decodeIfPresent(Double.self, forKey: .muntinWidth) ?? 0.75
         self.panels = try c.decodeIfPresent([WindowPanel].self, forKey: .panels) ?? []
         self.mullionLayoutPreset = try c.decodeIfPresent(MullionLayoutPreset.self, forKey: .mullionLayoutPreset) ?? .grid
+        self.mullionSeams = try c.decodeIfPresent([Bool].self, forKey: .mullionSeams) ?? []
         self.frameWidth = try c.decodeIfPresent(Double.self, forKey: .frameWidth) ?? 2
         self.jambDepth = try c.decodeIfPresent(Double.self, forKey: .jambDepth) ?? 4.5
         self.frameMaterial = try c.decodeIfPresent(WindowFrameMaterial.self, forKey: .frameMaterial) ?? .wood

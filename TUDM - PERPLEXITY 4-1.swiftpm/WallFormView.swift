@@ -1449,6 +1449,26 @@ struct SegmentDetailForm: View {
                     }
                 }
                 
+                if panelCountBinding.wrappedValue >= 2 && (isWindow || segment.kind == .opening) {
+                    Section {
+                        let seamCount = max(0, panelCountBinding.wrappedValue - 1)
+                        ForEach(0..<seamCount, id: \.self) { seamIndex in
+                            MullionSeamRow(
+                                seamIndex: seamIndex,
+                                panelLabelLeft: panelLabel(at: seamIndex),
+                                panelLabelRight: panelLabel(at: seamIndex + 1),
+                                isOn: seamBinding(at: seamIndex)
+                            )
+                        }
+                    } header: {
+                        Text("Mullions Between Panels")
+                    } footer: {
+                        Text("Turn a seam Off to remove the vertical divider between two panels while keeping them as separate units.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                
                 if isDoor {
                     Section {
                         LabeledContent("Leaf Configuration", value: leafConfigurationSummary)
@@ -1926,30 +1946,90 @@ struct SegmentDetailForm: View {
         }
     }
     
+    private func panelLabel(at index: Int) -> String {
+        guard let opening = segment.opening else { return "P\(index + 1)" }
+        guard opening.panels.indices.contains(index) else { return "P\(index + 1)" }
+        let label = opening.panels[index].label
+        return label.isEmpty ? "P\(index + 1)" : label
+    }
+    
+    private func seamBinding(at index: Int) -> Binding<Bool> {
+        Binding(
+            get: {
+                guard let opening = segment.opening else { return true }
+                if opening.mullionSeams.indices.contains(index) {
+                    return opening.mullionSeams[index]
+                }
+                return true
+            },
+            set: { newValue in
+                guard var opening = segment.opening else { return }
+                // Ensure seams array is sized correctly before writing
+                let seamsTarget = max(0, opening.panelCount - 1)
+                while opening.mullionSeams.count < seamsTarget {
+                    opening.mullionSeams.append(true)
+                }
+                if opening.mullionSeams.count > seamsTarget {
+                    opening.mullionSeams = Array(opening.mullionSeams.prefix(seamsTarget))
+                }
+                if opening.mullionSeams.indices.contains(index) {
+                    opening.mullionSeams[index] = newValue
+                }
+                segment.opening = opening
+            }
+        )
+    }
+    
     private func syncPanelsArray() {
         guard var opening = segment.opening else { return }
         let target = max(1, opening.panelCount)
-        if opening.panels.count == target { return }
         
-        if opening.panels.count < target {
-            let toAdd = target - opening.panels.count
-            for i in 0..<toAdd {
-                let existingCount = opening.panels.count
-                opening.panels.append(WindowPanel(
-                    label: defaultPanelLabel(index: existingCount + i, total: target),
-                    widthShare: 1,
-                    operation: .fixed
-                ))
+        if opening.panels.count != target {
+            if opening.panels.count < target {
+                let toAdd = target - opening.panels.count
+                for i in 0..<toAdd {
+                    let existingCount = opening.panels.count
+                    opening.panels.append(WindowPanel(
+                        label: defaultPanelLabel(index: existingCount + i, total: target),
+                        widthShare: 1,
+                        operation: .fixed,
+                        hasMuntinGrid: true
+                    ))
+                }
+            } else {
+                opening.panels = Array(opening.panels.prefix(target))
             }
-        } else {
-            opening.panels = Array(opening.panels.prefix(target))
-        }
-        // Relabel to keep labels sensible for the current total
-        for i in 0..<opening.panels.count {
-            if opening.panels[i].label.isEmpty {
-                opening.panels[i].label = defaultPanelLabel(index: i, total: opening.panels.count)
+            // Relabel to keep labels sensible for the current total
+            for i in 0..<opening.panels.count {
+                if opening.panels[i].label.isEmpty {
+                    opening.panels[i].label = defaultPanelLabel(index: i, total: opening.panels.count)
+                }
             }
         }
+        
+        // Sync seams array to (panelCount - 1). Preserve existing seam values.
+        // If the seams array is empty (legacy data), initialize from the old adjacency rule:
+        // seam i is On only if both panel i and panel i+1 had hasMullions == true.
+        let seamsTarget = max(0, target - 1)
+        if opening.mullionSeams.isEmpty && seamsTarget > 0 {
+            var initial: [Bool] = []
+            for i in 0..<seamsTarget {
+                if opening.panels.indices.contains(i) && opening.panels.indices.contains(i + 1) {
+                    let a = opening.panels[i].hasMullions
+                    let b = opening.panels[i + 1].hasMullions
+                    initial.append(a && b)
+                } else {
+                    initial.append(true)
+                }
+            }
+            opening.mullionSeams = initial
+        } else if opening.mullionSeams.count < seamsTarget {
+            let toAdd = seamsTarget - opening.mullionSeams.count
+            opening.mullionSeams.append(contentsOf: Array(repeating: true, count: toAdd))
+        } else if opening.mullionSeams.count > seamsTarget {
+            opening.mullionSeams = Array(opening.mullionSeams.prefix(seamsTarget))
+        }
+        
         segment.opening = opening
     }
     
@@ -2011,6 +2091,43 @@ struct SegmentDetailForm: View {
     }
 }
 
+// MARK: - Mullion Seam Row
+
+struct MullionSeamRow: View {
+    let seamIndex: Int
+    let panelLabelLeft: String
+    let panelLabelRight: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Seam \(seamIndex + 1)")
+                    .font(.callout.weight(.semibold))
+                Text("Between \(panelLabelLeft) and \(panelLabelRight)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                isOn.toggle()
+            } label: {
+                Text(isOn ? "Mullion On" : "Mullion Off")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isOn ? Color.purple : Color.gray)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 // MARK: - Panel Editor Row (extracted subview to reduce type-checker load)
 
 struct PanelEditorRow: View {
@@ -2031,37 +2148,20 @@ struct PanelEditorRow: View {
             
             StepperFieldRow(title: "Width (Share)", value: $panel.widthShare, step: 1)
             
-            HStack(spacing: 10) {
-                Button {
-                    panel.hasMullions.toggle()
-                } label: {
-                    Text(panel.hasMullions ? "Mullion On" : "Mullion Off")
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(panel.hasMullions ? Color.purple : Color.gray)
-                        )
-                }
-                .buttonStyle(.plain)
-                
-                Button {
-                    panel.hasMuntinGrid.toggle()
-                } label: {
-                    Text(panel.hasMuntinGrid ? "Grid On" : "Grid Off")
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(panel.hasMuntinGrid ? Color.green : Color.gray)
-                        )
-                }
-                .buttonStyle(.plain)
+            Button {
+                panel.hasMuntinGrid.toggle()
+            } label: {
+                Text(panel.hasMuntinGrid ? "Grid On" : "Grid Off")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(panel.hasMuntinGrid ? Color.green : Color.gray)
+                    )
             }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }

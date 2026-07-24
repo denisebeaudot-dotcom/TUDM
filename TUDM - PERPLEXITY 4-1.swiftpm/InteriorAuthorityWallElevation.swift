@@ -582,10 +582,14 @@ struct WallElevationView: View {
         let panelCount = max(1, opening.panelCount)
         let mullionW = opening.mullionWidth * scale
         
-        // Determine which inter-panel mullions actually get drawn (both adjacent panels must have hasMullions == true)
+        // Determine which inter-panel mullions actually get drawn.
+        // New model: opening.mullionSeams[i] controls seam i (between panel i and i+1).
+        // Legacy fallback: if mullionSeams is empty, use the old per-panel adjacency rule (both On).
         var mullionsDrawn: [Bool] = []
         for i in 0..<max(0, panelCount - 1) {
-            if i + 1 < opening.panels.count {
+            if i < opening.mullionSeams.count {
+                mullionsDrawn.append(opening.mullionSeams[i])
+            } else if i + 1 < opening.panels.count {
                 let a = opening.panels[i].hasMullions
                 let b = opening.panels[i + 1].hasMullions
                 mullionsDrawn.append(a && b)
