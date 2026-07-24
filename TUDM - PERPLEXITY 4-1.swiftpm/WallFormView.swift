@@ -363,11 +363,13 @@ struct WallFormView: View {
                         }
                         .onDelete { offsets in
                             draft.generatedSegments.remove(atOffsets: offsets)
+                            renumberColumns()
                             draft.chainString = rebuildChainString()
                             chainInput = draft.chainString
                         }
                         .onMove { source, destination in
                             draft.generatedSegments.move(fromOffsets: source, toOffset: destination)
+                            renumberColumns()
                             draft.chainString = rebuildChainString()
                             chainInput = draft.chainString
                         }
@@ -417,6 +419,10 @@ struct WallFormView: View {
             .environment(\.editMode, $editMode)
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: draft.generatedSegments.map { $0.kind }) { _, _ in
+                // When any segment's kind changes (via the detail sheet Picker), re-run column numbering.
+                renumberColumns()
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -550,6 +556,7 @@ struct WallFormView: View {
             Button(role: .destructive) {
                 if draft.generatedSegments.indices.contains(index) {
                     draft.generatedSegments.remove(at: index)
+                    renumberColumns()
                     draft.chainString = rebuildChainString()
                     chainInput = draft.chainString
                 }
@@ -701,6 +708,7 @@ struct WallFormView: View {
         draft.generatedSegments.insert(newSegment, at: insertIndex)
         insertingAfterIndex = nil
         
+        renumberColumns()
         draft.chainString = rebuildChainString()
         chainInput = draft.chainString
     }
@@ -729,6 +737,7 @@ struct WallFormView: View {
         copy.archRise = source.archRise
         
         draft.generatedSegments.insert(copy, at: index + 1)
+        renumberColumns()
         draft.chainString = rebuildChainString()
         chainInput = draft.chainString
     }
@@ -771,6 +780,18 @@ struct WallFormView: View {
         }
     }
     
+    // Assigns C1, C2, C3... to every .column segment in left-to-right order.
+    // Non-column segments are ignored in the count. Preserves the segment's user-entered note.
+    private func renumberColumns() {
+        var counter = 1
+        for i in draft.generatedSegments.indices {
+            if draft.generatedSegments[i].kind == .column {
+                draft.generatedSegments[i].label = "C\(counter)"
+                counter += 1
+            }
+        }
+    }
+    
     private func rebuildChainString() -> String {
         draft.generatedSegments.map { chainToken(for: $0.kind) }.joined(separator: " ")
     }
@@ -804,6 +825,7 @@ struct WallFormView: View {
             applyDefaults(to: &parsed[i])
         }
         draft.generatedSegments = parsed
+        renumberColumns()
         chainInput = normalized
         focusedField = nil
     }
@@ -825,6 +847,7 @@ struct WallFormView: View {
             applyDefaults(to: &segs[i])
         }
         draft.generatedSegments = segs
+        renumberColumns()
     }
     
     private func reapplyDefaultsToSegments() {
@@ -836,6 +859,7 @@ struct WallFormView: View {
         for i in draft.generatedSegments.indices {
             applyDefaults(to: &draft.generatedSegments[i])
         }
+        renumberColumns()
         draft.chainString = rebuildChainString()
         chainInput = draft.chainString
     }
