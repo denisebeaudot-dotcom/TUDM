@@ -1274,7 +1274,7 @@ struct SegmentDetailForm: View {
                 }
             }
             
-            Section("Segment") {
+            Section {
                 TextField("Label", text: $segment.label)
                 
                 Picker("Kind", selection: $segment.kind) {
@@ -1288,6 +1288,8 @@ struct SegmentDetailForm: View {
                 
                 TextField("Note", text: $segment.note, axis: .vertical)
                     .lineLimit(2...5)
+            } header: {
+                Text("Segment")
             } footer: {
                 Text("Segment width is edited on the main wall list, not here. This screen holds detail-only information.")
                     .font(.caption2)
