@@ -1633,16 +1633,11 @@ struct SegmentDetailForm: View {
                 }
                 
                 Section("Computed") {
-                    LabeledContent("Resolved Segment Width", value: formatted(segment.resolvedWidth))
                     LabeledContent("Top of Unit AFF", value: formatted(openingTopBinding.wrappedValue))
                     if isWindow, let opening = segment.opening {
                         LabeledContent("Lites per Panel", value: liteCount(rows: opening.muntinsRows, cols: opening.muntinsCols))
                         LabeledContent("Total Lites", value: "\(max(opening.panelCount, 1) * max(1, opening.muntinsRows == 0 ? 1 : opening.muntinsRows) * max(1, opening.muntinsCols == 0 ? 1 : opening.muntinsCols))")
                     }
-                }
-            } else {
-                Section("Computed") {
-                    LabeledContent("Resolved Segment Width", value: formatted(segment.resolvedWidth))
                 }
             }
         }
