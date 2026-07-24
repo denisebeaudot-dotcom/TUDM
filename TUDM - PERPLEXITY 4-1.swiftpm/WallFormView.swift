@@ -178,6 +178,11 @@ struct WallFormView: View {
         hasSegments
     }
     
+    private var isEditingExistingWall: Bool {
+        if case .edit = mode { return true }
+        return false
+    }
+    
     private let insertableKinds: [SegmentKind] = [
         .wallSpace,
         .wall,
@@ -422,7 +427,7 @@ struct WallFormView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(isEditingExistingWall ? "Update" : "Save") {
                         saveDraft()
                     }
                     .disabled(!isValid)
@@ -710,7 +715,9 @@ struct WallFormView: View {
         )
         copy.opening = source.opening
         copy.shelfCount = source.shelfCount
+        copy.shelfDepth = source.shelfDepth
         copy.isFloorToCeiling = source.isFloorToCeiling
+        copy.beamPosition = source.beamPosition
         
         draft.generatedSegments.insert(copy, at: index + 1)
         draft.chainString = rebuildChainString()
@@ -830,6 +837,7 @@ struct WallFormView: View {
             
         case .beam:
             segment.width = d.beamHeight
+            if segment.beamPosition == nil { segment.beamPosition = .onTopOfColumns }
             
         case .baseboard:
             segment.width = d.baseboardHeight
@@ -843,6 +851,7 @@ struct WallFormView: View {
         case .bookcase:
             if segment.width <= 0 { segment.width = 36 }
             if segment.shelfCount == nil { segment.shelfCount = 5 }
+            if segment.shelfDepth == nil { segment.shelfDepth = 12 }
             if segment.isFloorToCeiling == nil { segment.isFloorToCeiling = true }
             
         case .wall, .wallSpace, .returnZone:
@@ -1283,7 +1292,24 @@ struct SegmentDetailForm: View {
             if segment.kind == .bookcase {
                 Section("Bookcase") {
                     StepperIntFieldRow(title: "Shelf Count", value: shelfCountBinding, step: 1, minimum: 1, maximum: 12)
+                    StepperFieldRow(title: "Shelf Depth", value: shelfDepthBinding, step: 0.5)
                     Toggle("Floor to Ceiling", isOn: floorToCeilingBinding)
+                }
+            }
+            
+            if segment.kind == .beam {
+                Section {
+                    Picker("Position", selection: beamPositionBinding) {
+                        ForEach(BeamPosition.allCases, id: \.self) { pos in
+                            Text(pos.rawValue).tag(pos)
+                        }
+                    }
+                } header: {
+                    Text("Beam")
+                } footer: {
+                    Text("On Top of Columns: beam rests on the columns and extends past their outer faces. Wedged Between: beam ends flush against two verticals. Ceiling Hung: beam is a ceiling drop / soffit with no supporting columns.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
             }
             
@@ -1435,6 +1461,7 @@ struct SegmentDetailForm: View {
                     StepperFieldRow(title: "Left Casing", value: casingLeftBinding, step: 0.25)
                     StepperFieldRow(title: "Right Casing", value: casingRightBinding, step: 0.25)
                     StepperFieldRow(title: "Head Casing", value: casingHeadBinding, step: 0.25)
+                    StepperFieldRow(title: "Bottom Casing", value: casingBottomBinding, step: 0.25)
                     StepperFieldRow(title: "Casing Face Width", value: casingWidthBinding, step: 0.25)
                     Toggle("Top Casing Is Crown", isOn: topCasingIsCrownBinding)
                     StepperFieldRow(title: "Wall Space Above Unit", value: wallSpaceAboveUnitBinding, step: 0.5)
@@ -1611,6 +1638,20 @@ struct SegmentDetailForm: View {
         )
     }
     
+    private var shelfDepthBinding: Binding<Double> {
+        Binding(
+            get: { segment.shelfDepth ?? 12 },
+            set: { segment.shelfDepth = $0 }
+        )
+    }
+    
+    private var beamPositionBinding: Binding<BeamPosition> {
+        Binding(
+            get: { segment.beamPosition ?? .onTopOfColumns },
+            set: { segment.beamPosition = $0 }
+        )
+    }
+    
     private func openingDoubleBinding(_ keyPath: WritableKeyPath<OpeningSpec, Double>, fallback: Double = 0) -> Binding<Double> {
         Binding(
             get: { segment.opening?[keyPath: keyPath] ?? fallback },
@@ -1720,6 +1761,7 @@ struct SegmentDetailForm: View {
     private var casingLeftBinding: Binding<Double> { openingDoubleBinding(\.casingLeft) }
     private var casingRightBinding: Binding<Double> { openingDoubleBinding(\.casingRight) }
     private var casingHeadBinding: Binding<Double> { openingDoubleBinding(\.casingHead) }
+    private var casingBottomBinding: Binding<Double> { openingDoubleBinding(\.casingBottom, fallback: 3) }
     private var casingWidthBinding: Binding<Double> { openingDoubleBinding(\.casingWidth) }
     private var topCasingIsCrownBinding: Binding<Bool> { openingBoolBinding(\.topCasingIsCrown) }
     private var wallSpaceAboveUnitBinding: Binding<Double> { openingDoubleBinding(\.wallSpaceAboveUnit) }

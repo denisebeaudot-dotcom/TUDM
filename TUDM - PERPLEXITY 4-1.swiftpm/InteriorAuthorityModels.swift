@@ -334,6 +334,7 @@ struct OpeningSpec: Codable, Hashable {
     var casingLeft: Double = 3
     var casingRight: Double = 3
     var casingHead: Double = 3
+    var casingBottom: Double = 3      // NEW: bottom casing / base trim below the unit
     var casingWidth: Double = 3.5     // face width of the casing profile
     var topCasingIsCrown: Bool = false
     var wallSpaceAboveUnit: Double = 0
@@ -384,7 +385,7 @@ struct OpeningSpec: Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case category, windowStyle, doorStyle
         case openingWidth, openingHeight, sillOrBottomAFF
-        case casingLeft, casingRight, casingHead, casingWidth, topCasingIsCrown, wallSpaceAboveUnit
+        case casingLeft, casingRight, casingHead, casingBottom, casingWidth, topCasingIsCrown, wallSpaceAboveUnit
         case panelCount, mullionsVertical, mullionsHorizontal, mullionWidth
         case muntinsRows, muntinsCols, muntinWidth, panels, mullionLayoutPreset
         case frameWidth, jambDepth, frameMaterial, glazing
@@ -404,6 +405,7 @@ struct OpeningSpec: Codable, Hashable {
         casingLeft: Double = 3,
         casingRight: Double = 3,
         casingHead: Double = 3,
+        casingBottom: Double = 3,
         casingWidth: Double = 3.5,
         topCasingIsCrown: Bool = false,
         wallSpaceAboveUnit: Double = 0,
@@ -443,6 +445,7 @@ struct OpeningSpec: Codable, Hashable {
         self.casingLeft = casingLeft
         self.casingRight = casingRight
         self.casingHead = casingHead
+        self.casingBottom = casingBottom
         self.casingWidth = casingWidth
         self.topCasingIsCrown = topCasingIsCrown
         self.wallSpaceAboveUnit = wallSpaceAboveUnit
@@ -485,6 +488,7 @@ struct OpeningSpec: Codable, Hashable {
         self.casingLeft = try c.decodeIfPresent(Double.self, forKey: .casingLeft) ?? 3
         self.casingRight = try c.decodeIfPresent(Double.self, forKey: .casingRight) ?? 3
         self.casingHead = try c.decodeIfPresent(Double.self, forKey: .casingHead) ?? 3
+        self.casingBottom = try c.decodeIfPresent(Double.self, forKey: .casingBottom) ?? 3
         self.casingWidth = try c.decodeIfPresent(Double.self, forKey: .casingWidth) ?? 3.5
         self.topCasingIsCrown = try c.decodeIfPresent(Bool.self, forKey: .topCasingIsCrown) ?? false
         self.wallSpaceAboveUnit = try c.decodeIfPresent(Double.self, forKey: .wallSpaceAboveUnit) ?? 0
@@ -517,6 +521,14 @@ struct OpeningSpec: Codable, Hashable {
     }
 }
 
+// MARK: - Beam Positioning
+
+enum BeamPosition: String, CaseIterable, Codable, Hashable {
+    case onTopOfColumns = "On Top of Columns"
+    case wedgedBetween = "Wedged Between"
+    case ceilingHung = "Ceiling Hung"
+}
+
 // MARK: - Wall Segment
 
 struct WallSegment: Identifiable, Codable, Hashable {
@@ -528,7 +540,9 @@ struct WallSegment: Identifiable, Codable, Hashable {
     
     var opening: OpeningSpec?
     var shelfCount: Int?
+    var shelfDepth: Double?          // inches; how far shelves project from wall
     var isFloorToCeiling: Bool?
+    var beamPosition: BeamPosition?  // only used when kind == .beam
     
     init(
         id: UUID = UUID(),
@@ -538,7 +552,9 @@ struct WallSegment: Identifiable, Codable, Hashable {
         note: String = "",
         opening: OpeningSpec? = nil,
         shelfCount: Int? = nil,
-        isFloorToCeiling: Bool? = nil
+        shelfDepth: Double? = nil,
+        isFloorToCeiling: Bool? = nil,
+        beamPosition: BeamPosition? = nil
     ) {
         self.id = id
         self.label = label
@@ -547,7 +563,28 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.note = note
         self.opening = opening
         self.shelfCount = shelfCount
+        self.shelfDepth = shelfDepth
         self.isFloorToCeiling = isFloorToCeiling
+        self.beamPosition = beamPosition
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, label, width, kind, note
+        case opening, shelfCount, shelfDepth, isFloorToCeiling, beamPosition
+    }
+    
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        self.width = try c.decodeIfPresent(Double.self, forKey: .width) ?? 0
+        self.kind = try c.decodeIfPresent(SegmentKind.self, forKey: .kind) ?? .wall
+        self.note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        self.opening = try c.decodeIfPresent(OpeningSpec.self, forKey: .opening)
+        self.shelfCount = try c.decodeIfPresent(Int.self, forKey: .shelfCount)
+        self.shelfDepth = try c.decodeIfPresent(Double.self, forKey: .shelfDepth)
+        self.isFloorToCeiling = try c.decodeIfPresent(Bool.self, forKey: .isFloorToCeiling)
+        self.beamPosition = try c.decodeIfPresent(BeamPosition.self, forKey: .beamPosition)
     }
     
     var resolvedWidth: Double {
@@ -559,7 +596,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
     
     static let wallOneSeedSegments: [WallSegment] = [
         WallSegment(label: "C1", width: 12, kind: .column, note: "Left column"),
-        WallSegment(label: "SH1", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, isFloorToCeiling: true),
+        WallSegment(label: "SH1", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, shelfDepth: 12, isFloorToCeiling: true),
         WallSegment(label: "C2", width: 12, kind: .column, note: "Center-left column"),
         WallSegment(label: "WS1", width: 18, kind: .wallSpace, note: "Left wall space"),
         WallSegment(
@@ -579,7 +616,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
         ),
         WallSegment(label: "WS2", width: 18, kind: .wallSpace, note: "Right wall space"),
         WallSegment(label: "C3", width: 12, kind: .column, note: "Center-right column"),
-        WallSegment(label: "SH2", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, isFloorToCeiling: true),
+        WallSegment(label: "SH2", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, shelfDepth: 12, isFloorToCeiling: true),
         WallSegment(label: "C4", width: 12, kind: .column, note: "Right column")
     ]
     
@@ -613,6 +650,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
                     kind: .bookcase,
                     note: "Chain shelf",
                     shelfCount: 5,
+                    shelfDepth: 12,
                     isFloorToCeiling: true
                 )
                 
@@ -691,7 +729,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
                     label: nextLabel("BM"),
                     width: 24,
                     kind: .beam,
-                    note: "Beam zone"
+                    note: "Beam zone",
+                    beamPosition: .onTopOfColumns
                 )
                 
             case "BB":
