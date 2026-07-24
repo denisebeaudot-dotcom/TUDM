@@ -529,6 +529,17 @@ enum BeamPosition: String, CaseIterable, Codable, Hashable {
     case ceilingHung = "Ceiling Hung"
 }
 
+// MARK: - Wall Variant
+
+enum WallVariant: String, CaseIterable, Codable, Hashable {
+    case full = "Full Wall"
+    case kneeWall = "Knee / Half Wall"
+    case cathedral = "Cathedral"
+    case archedPartition = "Arched Partition"
+    case passThrough = "Pass-Through Opening"
+    case custom = "Custom"
+}
+
 // MARK: - Wall Segment
 
 struct WallSegment: Identifiable, Codable, Hashable {
@@ -543,6 +554,11 @@ struct WallSegment: Identifiable, Codable, Hashable {
     var shelfDepth: Double?          // inches; how far shelves project from wall
     var isFloorToCeiling: Bool?
     var beamPosition: BeamPosition?  // only used when kind == .beam
+    var wallVariant: WallVariant?    // only used when kind == .wall or .wallSpace
+    var kneeWallHeight: Double?      // inches AFF; only when wallVariant == .kneeWall
+    var cathedralPeakHeight: Double? // inches AFF; only when wallVariant == .cathedral
+    var cathedralPeakOffset: Double? // inches from wall left edge to peak; only when .cathedral
+    var archRise: Double?            // inches; only when wallVariant == .archedPartition
     
     init(
         id: UUID = UUID(),
@@ -554,7 +570,12 @@ struct WallSegment: Identifiable, Codable, Hashable {
         shelfCount: Int? = nil,
         shelfDepth: Double? = nil,
         isFloorToCeiling: Bool? = nil,
-        beamPosition: BeamPosition? = nil
+        beamPosition: BeamPosition? = nil,
+        wallVariant: WallVariant? = nil,
+        kneeWallHeight: Double? = nil,
+        cathedralPeakHeight: Double? = nil,
+        cathedralPeakOffset: Double? = nil,
+        archRise: Double? = nil
     ) {
         self.id = id
         self.label = label
@@ -566,11 +587,17 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.shelfDepth = shelfDepth
         self.isFloorToCeiling = isFloorToCeiling
         self.beamPosition = beamPosition
+        self.wallVariant = wallVariant
+        self.kneeWallHeight = kneeWallHeight
+        self.cathedralPeakHeight = cathedralPeakHeight
+        self.cathedralPeakOffset = cathedralPeakOffset
+        self.archRise = archRise
     }
     
     enum CodingKeys: String, CodingKey {
         case id, label, width, kind, note
         case opening, shelfCount, shelfDepth, isFloorToCeiling, beamPosition
+        case wallVariant, kneeWallHeight, cathedralPeakHeight, cathedralPeakOffset, archRise
     }
     
     init(from decoder: Decoder) throws {
@@ -585,6 +612,11 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.shelfDepth = try c.decodeIfPresent(Double.self, forKey: .shelfDepth)
         self.isFloorToCeiling = try c.decodeIfPresent(Bool.self, forKey: .isFloorToCeiling)
         self.beamPosition = try c.decodeIfPresent(BeamPosition.self, forKey: .beamPosition)
+        self.wallVariant = try c.decodeIfPresent(WallVariant.self, forKey: .wallVariant)
+        self.kneeWallHeight = try c.decodeIfPresent(Double.self, forKey: .kneeWallHeight)
+        self.cathedralPeakHeight = try c.decodeIfPresent(Double.self, forKey: .cathedralPeakHeight)
+        self.cathedralPeakOffset = try c.decodeIfPresent(Double.self, forKey: .cathedralPeakOffset)
+        self.archRise = try c.decodeIfPresent(Double.self, forKey: .archRise)
     }
     
     var resolvedWidth: Double {

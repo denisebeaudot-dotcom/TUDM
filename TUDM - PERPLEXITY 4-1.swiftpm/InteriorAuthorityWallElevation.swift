@@ -191,12 +191,11 @@ struct WallElevationView: View {
         case .windowUnit, .door, .opening:
             openingSegmentView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .column:
-            filledBar(width: width, height: wallHeight, fill: Color.gray.opacity(0.55), stroke: Color.gray, label: showsLabels ? seg.label : nil)
+            columnView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .bookcase:
             bookcaseView(segment: seg, width: width, wallHeight: wallHeight)
         case .beam:
-            filledBar(width: width, height: wallHeight * 0.15, fill: Color.purple.opacity(0.3), stroke: Color.purple.opacity(0.7), label: showsLabels ? seg.label : nil)
-                .offset(y: wallHeight * 0.05)
+            beamSegmentView(segment: seg, width: width, wallHeight: wallHeight, scale: scale)
         case .baseboard, .crown, .trim, .casing:
             Color.clear.frame(width: width, height: wallHeight)
         case .returnZone:
@@ -206,6 +205,61 @@ struct WallElevationView: View {
         case .wall:
             wallView(seg: seg, width: width, wallHeight: wallHeight)
         }
+    }
+    
+    private func beamSegmentView(segment: WallSegment, width: Double, wallHeight: Double, scale: Double) -> some View {
+        // Beam segments in the horizontal chain occupy the vertical band where the beam actually sits.
+        // Height = beamHeight from defaults. Vertical position depends on BeamPosition:
+        //   .onTopOfColumns: beam bottom = columnHeight, extends up to columnHeight + beamHeight (may reach ceiling)
+        //   .wedgedBetween:  same vertical extents but rendered narrower to sit only between the two adjacent verticals visually (still full slot here)
+        //   .ceilingHung:    beam top = ceiling, beam bottom = ceiling - beamHeight (no column support)
+        let beamH = max(0, layout.beamHeight * scale)
+        let colH = max(0, layout.defaults.columnHeight * scale)
+        let position = segment.beamPosition ?? .onTopOfColumns
+        
+        let yTop: Double
+        switch position {
+        case .onTopOfColumns:
+            // Beam bottom at column top. yTop measured from top of wall = wallHeight - (colH + beamH)
+            yTop = max(0, wallHeight - colH - beamH)
+        case .wedgedBetween:
+            // Same as onTopOfColumns for placement, but conceptually only spans between adjacent walls/columns
+            yTop = max(0, wallHeight - colH - beamH)
+        case .ceilingHung:
+            // Beam hugs the ceiling
+            yTop = 0
+        }
+        
+        let label = showsLabels ? (segment.label.isEmpty ? "BM" : segment.label) : nil
+        return Rectangle()
+            .fill(Color.purple.opacity(0.3))
+            .overlay(
+                ZStack {
+                    Rectangle().stroke(Color.purple.opacity(0.7), lineWidth: 1)
+                    labelOverlay(label: label)
+                }
+            )
+            .frame(width: width, height: beamH)
+            .offset(y: yTop)
+    }
+    
+    private func columnView(segment: WallSegment, width: Double, wallHeight: Double, scale: Double) -> some View {
+        // A column stands on the floor. Its height comes from RoomDefaults.columnHeight.
+        // If that value is less than the wall's full height, the column stops short — creating room for the beam above it.
+        let colH = max(0, layout.defaults.columnHeight * scale)
+        let clampedH = min(colH, wallHeight)
+        let yOffset = wallHeight - clampedH
+        let label = showsLabels ? segment.label : nil
+        return Rectangle()
+            .fill(Color.gray.opacity(0.55))
+            .overlay(
+                ZStack {
+                    Rectangle().stroke(Color.gray, lineWidth: 1)
+                    labelOverlay(label: label)
+                }
+            )
+            .frame(width: width, height: clampedH)
+            .offset(y: yOffset)
     }
     
     private func filledBar(width: Double, height: Double, fill: Color, stroke: Color, label: String?) -> some View {
@@ -320,15 +374,16 @@ struct WallElevationView: View {
         let casingLeft = opening.casingLeft * scale
         let casingRight = opening.casingRight * scale
         let casingHead = opening.casingHead * scale
+        let casingBottom = opening.casingBottom * scale
         let ceilingH = layout.ceilingHeight
         // Vertical placement: unit sits with its bottom at sillFromFloor (from floor).
         let unitTopFromCeiling = max(0, ceilingH - (sillFromFloor + unitH))
         let unitYTop = unitTopFromCeiling * scale
         let unitHeightScaled = unitH * scale
         let innerOpeningWidth = max(0, width - casingLeft - casingRight)
-        // Casing rectangle spans the full slot horizontally and covers head casing above unit:
+        // Casing rectangle spans the full slot horizontally and covers head casing above unit and bottom casing below sill:
         let outerY = unitYTop - casingHead
-        let outerH = unitHeightScaled + casingHead
+        let outerH = unitHeightScaled + casingHead + casingBottom
         let labelText = segment.label.isEmpty ? kindShort(segment.kind) : segment.label
         
         return ZStack(alignment: .topLeading) {

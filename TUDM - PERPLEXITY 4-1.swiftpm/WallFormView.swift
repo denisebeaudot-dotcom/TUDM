@@ -718,6 +718,11 @@ struct WallFormView: View {
         copy.shelfDepth = source.shelfDepth
         copy.isFloorToCeiling = source.isFloorToCeiling
         copy.beamPosition = source.beamPosition
+        copy.wallVariant = source.wallVariant
+        copy.kneeWallHeight = source.kneeWallHeight
+        copy.cathedralPeakHeight = source.cathedralPeakHeight
+        copy.cathedralPeakOffset = source.cathedralPeakOffset
+        copy.archRise = source.archRise
         
         draft.generatedSegments.insert(copy, at: index + 1)
         draft.chainString = rebuildChainString()
@@ -1281,12 +1286,12 @@ struct SegmentDetailForm: View {
                     handleKindChange(newValue)
                 }
                 
-                if !isOpeningSegment {
-                    StepperFieldRow(title: "Width", value: $segment.width, step: 1)
-                }
-                
                 TextField("Note", text: $segment.note, axis: .vertical)
                     .lineLimit(2...5)
+            } footer: {
+                Text("Segment width is edited on the main wall list, not here. This screen holds detail-only information.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             
             if segment.kind == .bookcase {
@@ -1308,6 +1313,35 @@ struct SegmentDetailForm: View {
                     Text("Beam")
                 } footer: {
                     Text("On Top of Columns: beam rests on the columns and extends past their outer faces. Wedged Between: beam ends flush against two verticals. Ceiling Hung: beam is a ceiling drop / soffit with no supporting columns.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            
+            if segment.kind == .wall || segment.kind == .wallSpace {
+                Section {
+                    Picker("Variant", selection: wallVariantBinding) {
+                        ForEach(WallVariant.allCases, id: \.self) { v in
+                            Text(v.rawValue).tag(v)
+                        }
+                    }
+                    
+                    if wallVariantBinding.wrappedValue == .kneeWall {
+                        StepperFieldRow(title: "Knee Wall Height", value: kneeWallHeightBinding, step: 1)
+                    }
+                    
+                    if wallVariantBinding.wrappedValue == .cathedral {
+                        StepperFieldRow(title: "Peak Height", value: cathedralPeakHeightBinding, step: 1)
+                        StepperFieldRow(title: "Peak Offset From Left", value: cathedralPeakOffsetBinding, step: 1)
+                    }
+                    
+                    if wallVariantBinding.wrappedValue == .archedPartition {
+                        StepperFieldRow(title: "Arch Rise", value: archRiseBinding, step: 0.5)
+                    }
+                } header: {
+                    Text("Wall Variant")
+                } footer: {
+                    Text("Full Wall: floor-to-ceiling standard wall. Knee / Half Wall: capped at Knee Wall Height AFF. Cathedral: single peak defined by peak height and horizontal offset from left. Arched Partition: half-round or elliptical head, Arch Rise is the vertical distance from spring line to peak. Pass-Through: framed opening with no fill. Custom: use the Note field.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -1649,6 +1683,41 @@ struct SegmentDetailForm: View {
         Binding(
             get: { segment.beamPosition ?? .onTopOfColumns },
             set: { segment.beamPosition = $0 }
+        )
+    }
+    
+    private var wallVariantBinding: Binding<WallVariant> {
+        Binding(
+            get: { segment.wallVariant ?? .full },
+            set: { segment.wallVariant = $0 }
+        )
+    }
+    
+    private var kneeWallHeightBinding: Binding<Double> {
+        Binding(
+            get: { segment.kneeWallHeight ?? 42 },
+            set: { segment.kneeWallHeight = $0 }
+        )
+    }
+    
+    private var cathedralPeakHeightBinding: Binding<Double> {
+        Binding(
+            get: { segment.cathedralPeakHeight ?? 120 },
+            set: { segment.cathedralPeakHeight = $0 }
+        )
+    }
+    
+    private var cathedralPeakOffsetBinding: Binding<Double> {
+        Binding(
+            get: { segment.cathedralPeakOffset ?? (segment.width / 2) },
+            set: { segment.cathedralPeakOffset = $0 }
+        )
+    }
+    
+    private var archRiseBinding: Binding<Double> {
+        Binding(
+            get: { segment.archRise ?? 24 },
+            set: { segment.archRise = $0 }
         )
     }
     
