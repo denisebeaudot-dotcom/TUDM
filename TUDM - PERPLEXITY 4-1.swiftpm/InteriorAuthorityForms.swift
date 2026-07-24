@@ -408,3 +408,182 @@ struct StepperFieldRow: View {
         }
     }
 }
+
+// MARK: - Beam Draft & Form
+
+struct BeamColumnRef: Identifiable, Hashable {
+    let id: UUID              // column segment UUID
+    let wallIndex: Int        // 0-based wall position
+    let wallName: String
+    let columnLabel: String
+    
+    var displayName: String {
+        // "Wall 1 · C2"
+        let wallText = wallName.isEmpty ? "Wall \(wallIndex + 1)" : wallName
+        let colText = columnLabel.isEmpty ? "Column" : columnLabel
+        return "\(wallText) · \(colText)"
+    }
+    
+    static func gather(from walls: [WallSpec]) -> [BeamColumnRef] {
+        var refs: [BeamColumnRef] = []
+        for (wallIndex, wall) in walls.enumerated() {
+            for segment in wall.segments where segment.kind == .column {
+                refs.append(BeamColumnRef(
+                    id: segment.id,
+                    wallIndex: wallIndex,
+                    wallName: wall.name,
+                    columnLabel: segment.label
+                ))
+            }
+        }
+        return refs
+    }
+}
+
+struct BeamDraft: Hashable {
+    var label: String = ""
+    var fromColumnID: UUID? = nil
+    var toColumnID: UUID? = nil
+    var thickness: Double = 6
+    var height: Double = 12
+    var position: BeamPosition = .onTopOfColumns
+    
+    init() {}
+    
+    init(beam: RoomBeam) {
+        self.label = beam.label
+        self.fromColumnID = beam.fromColumnID
+        self.toColumnID = beam.toColumnID
+        self.thickness = beam.thickness
+        self.height = beam.height
+        self.position = beam.position
+    }
+    
+    var isValid: Bool {
+        guard let from = fromColumnID, let to = toColumnID else { return false }
+        return from != to && thickness > 0 && height > 0
+    }
+    
+    func toBeam(existingID: UUID? = nil) -> RoomBeam? {
+        guard let from = fromColumnID, let to = toColumnID else { return nil }
+        return RoomBeam(
+            id: existingID ?? UUID(),
+            label: label,
+            fromColumnID: from,
+            toColumnID: to,
+            thickness: thickness,
+            height: height,
+            position: position
+        )
+    }
+}
+
+struct BeamFormView: View {
+    enum Mode {
+        case create
+        case edit(RoomBeam)
+        
+        var title: String {
+            switch self {
+            case .create: return "New Beam"
+            case .edit: return "Edit Beam"
+            }
+        }
+        
+        var existingID: UUID? {
+            switch self {
+            case .create: return nil
+            case .edit(let b): return b.id
+            }
+        }
+    }
+    
+    let mode: Mode
+    let availableColumns: [BeamColumnRef]
+    let onSave: (RoomBeam) -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: BeamDraft
+    
+    init(mode: Mode, availableColumns: [BeamColumnRef], onSave: @escaping (RoomBeam) -> Void) {
+        self.mode = mode
+        self.availableColumns = availableColumns
+        self.onSave = onSave
+        
+        switch mode {
+        case .create:
+            _draft = State(initialValue: BeamDraft())
+        case .edit(let beam):
+            _draft = State(initialValue: BeamDraft(beam: beam))
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Beam") {
+                    TextField("Label (e.g. B1)", text: $draft.label)
+                }
+                
+                Section("Anchors") {
+                    if availableColumns.isEmpty {
+                        Text("Add at least two columns across your walls before creating a beam.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("From Column", selection: $draft.fromColumnID) {
+                            Text("Select column").tag(UUID?.none)
+                            ForEach(availableColumns) { col in
+                                Text(col.displayName).tag(UUID?.some(col.id))
+                            }
+                        }
+                        
+                        Picker("To Column", selection: $draft.toColumnID) {
+                            Text("Select column").tag(UUID?.none)
+                            ForEach(availableColumns) { col in
+                                Text(col.displayName).tag(UUID?.some(col.id))
+                            }
+                        }
+                    }
+                }
+                
+                Section("Dimensions") {
+                    StepperFieldRow(title: "Thickness (Plan)", value: $draft.thickness, step: 0.5)
+                    StepperFieldRow(title: "Height (Vertical)", value: $draft.height, step: 1)
+                }
+                
+                Section("Position") {
+                    Picker("Beam Position", selection: $draft.position) {
+                        ForEach(BeamPosition.allCases, id: \.self) { p in
+                            Text(p.rawValue).tag(p)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+            .navigationTitle(mode.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saveButtonTitle) {
+                        if let beam = draft.toBeam(existingID: mode.existingID) {
+                            onSave(beam)
+                            dismiss()
+                        }
+                    }
+                    .disabled(!draft.isValid)
+                }
+            }
+        }
+    }
+    
+    private var saveButtonTitle: String {
+        switch mode {
+        case .create: return "Add"
+        case .edit: return "Update"
+        }
+    }
+}

@@ -33,19 +33,36 @@ struct Room: Identifiable, Codable, Hashable {
     var notes: String
     var defaults: RoomDefaults
     var wallSpecs: [WallSpec]
+    var beams: [RoomBeam]
     
     init(
         id: UUID = UUID(),
         name: String = "",
         notes: String = "",
         defaults: RoomDefaults = .rgrstDefaults,
-        wallSpecs: [WallSpec] = []
+        wallSpecs: [WallSpec] = [],
+        beams: [RoomBeam] = []
     ) {
         self.id = id
         self.name = name
         self.notes = notes
         self.defaults = defaults
         self.wallSpecs = wallSpecs
+        self.beams = beams
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, notes, defaults, wallSpecs, beams
+    }
+    
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        self.notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        self.defaults = try c.decodeIfPresent(RoomDefaults.self, forKey: .defaults) ?? .rgrstDefaults
+        self.wallSpecs = try c.decodeIfPresent([WallSpec].self, forKey: .wallSpecs) ?? []
+        self.beams = try c.decodeIfPresent([RoomBeam].self, forKey: .beams) ?? []
     }
 }
 
@@ -538,6 +555,36 @@ enum WallVariant: String, CaseIterable, Codable, Hashable {
     case archedPartition = "Arched Partition"
     case passThrough = "Pass-Through Opening"
     case custom = "Custom"
+}
+
+// MARK: - Room Beam (column-anchored, spans across walls)
+
+struct RoomBeam: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var label: String
+    var fromColumnID: UUID
+    var toColumnID: UUID
+    var thickness: Double   // face dimension in plan (inches)
+    var height: Double      // vertical dimension (inches)
+    var position: BeamPosition
+    
+    init(
+        id: UUID = UUID(),
+        label: String = "",
+        fromColumnID: UUID,
+        toColumnID: UUID,
+        thickness: Double = 6,
+        height: Double = 12,
+        position: BeamPosition = .onTopOfColumns
+    ) {
+        self.id = id
+        self.label = label
+        self.fromColumnID = fromColumnID
+        self.toColumnID = toColumnID
+        self.thickness = thickness
+        self.height = height
+        self.position = position
+    }
 }
 
 // MARK: - Wall Segment

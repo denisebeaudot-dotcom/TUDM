@@ -183,6 +183,8 @@ struct RoomDetailView: View {
     @State private var showingNewWall = false
     @State private var editingWall: WallSpec?
     @State private var showingWorksheet = false
+    @State private var showingNewBeam = false
+    @State private var editingBeam: RoomBeam?
     
     private var projectIndex: Int? {
         store.projects.firstIndex(where: { $0.id == projectID })
@@ -257,7 +259,9 @@ struct RoomDetailView: View {
                                         WallElevationThumbnail(
                                             wall: wall,
                                             defaults: wall.usesOverrides ? (wall.overrides ?? room.defaults) : room.defaults,
-                                            verticalChain: wall.verticalChainString
+                                            verticalChain: wall.verticalChainString,
+                                            allWalls: room.wallSpecs,
+                                            roomBeams: room.beams
                                         )
                                         .frame(height: 90)
                                         .background(Color(.secondarySystemBackground))
@@ -302,6 +306,38 @@ struct RoomDetailView: View {
                             showingNewWall = true
                         } label: {
                             Label("Add Wall", systemImage: "plus")
+                        }
+                    }
+                    
+                    Section("Room Beams") {
+                        if room.beams.isEmpty {
+                            Text("No beams. Beams span between columns across walls.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(room.beams) { beam in
+                                Button {
+                                    editingBeam = beam
+                                } label: {
+                                    beamRow(beam: beam, walls: room.wallSpecs)
+                                }
+                            }
+                            .onDelete { offsets in
+                                store.deleteBeams(projectID: projectID, roomID: roomID, at: offsets)
+                            }
+                        }
+                        
+                        Button {
+                            showingNewBeam = true
+                        } label: {
+                            Label("Add Beam", systemImage: "plus")
+                        }
+                        .disabled(BeamColumnRef.gather(from: room.wallSpecs).count < 2)
+                        
+                        if BeamColumnRef.gather(from: room.wallSpecs).count < 2 {
+                            Text("Add at least two columns across your walls before creating a beam.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 }
@@ -365,9 +401,49 @@ struct RoomDetailView: View {
                 .sheet(isPresented: $showingWorksheet) {
                     WorksheetPreviewSheet(project: project, room: room)
                 }
+                .sheet(isPresented: $showingNewBeam) {
+                    BeamFormView(
+                        mode: .create,
+                        availableColumns: BeamColumnRef.gather(from: room.wallSpecs)
+                    ) { beam in
+                        store.addBeam(projectID: projectID, roomID: roomID, beam: beam)
+                    }
+                    .interactiveDismissDisabled()
+                }
+                .sheet(item: $editingBeam) { beam in
+                    BeamFormView(
+                        mode: .edit(beam),
+                        availableColumns: BeamColumnRef.gather(from: room.wallSpecs)
+                    ) { updated in
+                        store.updateBeam(projectID: projectID, roomID: roomID, beam: updated)
+                    }
+                    .interactiveDismissDisabled()
+                }
             } else {
                 ContentUnavailableView("Project Missing", systemImage: "folder.badge.questionmark")
             }
         }
+    }
+    
+    @ViewBuilder
+    private func beamRow(beam: RoomBeam, walls: [WallSpec]) -> some View {
+        let refs = BeamColumnRef.gather(from: walls)
+        let fromRef = refs.first(where: { $0.id == beam.fromColumnID })
+        let toRef = refs.first(where: { $0.id == beam.toColumnID })
+        
+        VStack(alignment: .leading, spacing: 4) {
+            Text(beam.label.isEmpty ? "Beam" : beam.label)
+                .font(.headline)
+                .foregroundStyle(.primary)
+            
+            Text("\(fromRef?.displayName ?? "?") → \(toRef?.displayName ?? "?")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Text("\(String(format: "%.2f", beam.thickness))\" thick · \(String(format: "%.2f", beam.height))\" tall · \(beam.position.rawValue)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 2)
     }
 }

@@ -6,6 +6,8 @@ struct WallElevationLayout {
     let wall: WallSpec
     let defaults: RoomDefaults
     let verticalChain: String
+    let allWalls: [WallSpec]
+    let roomBeams: [RoomBeam]
     
     var totalWidth: Double { max(1, wall.totalWidth) }
     var ceilingHeight: Double { max(1, defaults.ceilingHeight) }
@@ -57,13 +59,109 @@ struct WallElevationLayout {
         }
         return max(0, ceilingHeight - hiAFF)
     }
+    
+    // MARK: Room-beam intersections with this wall
+    
+    /// Where a column with the given ID appears on this wall.
+    /// Returns the x center in inches (0..totalWidth), or nil if the column is not on this wall.
+    private func columnCenterX(columnID: UUID) -> Double? {
+        var cursor: Double = 0
+        for segment in wall.segments {
+            let w = segment.resolvedWidth
+            if segment.id == columnID && segment.kind == .column {
+                return cursor + w / 2
+            }
+            cursor += w
+        }
+        return nil
+    }
+    
+    /// Which wall (by id) is the given column on?
+    private func wallID(forColumn columnID: UUID) -> UUID? {
+        for w in allWalls {
+            if w.segments.contains(where: { $0.id == columnID && $0.kind == .column }) {
+                return w.id
+            }
+        }
+        return nil
+    }
+    
+    /// A projected beam extent on this wall.
+    struct BeamProjection: Identifiable {
+        let id: UUID
+        let label: String
+        let startX: Double     // inches from left edge of this wall
+        let endX: Double       // inches from left edge of this wall
+        let thickness: Double  // vertical size in inches
+        let position: BeamPosition
+    }
+    
+    /// Compute how each room beam intersects this wall for drawing.
+    var beamProjections: [BeamProjection] {
+        var results: [BeamProjection] = []
+        for beam in roomBeams {
+            let fromX = columnCenterX(columnID: beam.fromColumnID)
+            let toX = columnCenterX(columnID: beam.toColumnID)
+            let fromWall = wallID(forColumn: beam.fromColumnID)
+            let toWall = wallID(forColumn: beam.toColumnID)
+            
+            let onThisWallFrom = fromWall == wall.id
+            let onThisWallTo = toWall == wall.id
+            
+            let startX: Double
+            let endX: Double
+            
+            if onThisWallFrom && onThisWallTo, let a = fromX, let b = toX {
+                // Both anchors on this wall: draw between them
+                startX = min(a, b)
+                endX = max(a, b)
+            } else if onThisWallFrom, let a = fromX {
+                // From anchor here, To on another wall: extend to the end of this wall
+                // Direction: from column A to the wall edge nearest the other wall.
+                // Without floorplan info we don't know which edge, so draw to the closer wall edge.
+                // Heuristic: extend to the farther edge (which is toward the room interior).
+                let leftDistance = a
+                let rightDistance = totalWidth - a
+                if rightDistance >= leftDistance {
+                    startX = a
+                    endX = totalWidth
+                } else {
+                    startX = 0
+                    endX = a
+                }
+            } else if onThisWallTo, let b = toX {
+                let leftDistance = b
+                let rightDistance = totalWidth - b
+                if rightDistance >= leftDistance {
+                    startX = b
+                    endX = totalWidth
+                } else {
+                    startX = 0
+                    endX = b
+                }
+            } else {
+                // Neither anchor on this wall - beam does not intersect (v1 assumption)
+                continue
+            }
+            
+            results.append(BeamProjection(
+                id: beam.id,
+                label: beam.label,
+                startX: startX,
+                endX: endX,
+                thickness: max(0, beam.height),
+                position: beam.position
+            ))
+        }
+        return results
+    }
 }
 
 // MARK: - Wall Elevation Builder
 
 enum WallElevationBuilder {
-    static func build(wall: WallSpec, defaults: RoomDefaults, verticalChain: String) -> WallElevationLayout {
-        WallElevationLayout(wall: wall, defaults: defaults, verticalChain: verticalChain)
+    static func build(wall: WallSpec, defaults: RoomDefaults, verticalChain: String, allWalls: [WallSpec] = [], roomBeams: [RoomBeam] = []) -> WallElevationLayout {
+        WallElevationLayout(wall: wall, defaults: defaults, verticalChain: verticalChain, allWalls: allWalls, roomBeams: roomBeams)
     }
 }
 
@@ -111,8 +209,45 @@ struct WallElevationView: View {
             
             segmentsLayer(scale: scale, scaledH: scaledH)
             
+            roomBeamsLayer(scale: scale, scaledW: scaledW, scaledH: scaledH)
+            
             if showsDimensions {
                 dimensionsLayer(scale: scale, scaledW: scaledW, scaledH: scaledH)
+            }
+        }
+    }
+    
+    private func roomBeamsLayer(scale: Double, scaledW: Double, scaledH: Double) -> some View {
+        let projections = layout.beamProjections
+        let colH = max(0, layout.defaults.columnHeight * scale)
+        
+        return ZStack(alignment: .topLeading) {
+            ForEach(projections) { p in
+                let x = p.startX * scale
+                let w = max(1, (p.endX - p.startX) * scale)
+                let h = max(1, p.thickness * scale)
+                let yTop: Double = {
+                    switch p.position {
+                    case .onTopOfColumns, .wedgedBetween:
+                        return max(0, scaledH - colH - h)
+                    case .ceilingHung:
+                        return 0
+                    }
+                }()
+                Rectangle()
+                    .fill(Color.purple.opacity(0.35))
+                    .overlay(
+                        Rectangle().stroke(Color.purple.opacity(0.8), lineWidth: 1)
+                    )
+                    .overlay(
+                        showsLabels ?
+                            Text(p.label.isEmpty ? "BM" : p.label)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.primary)
+                            : nil
+                    )
+                    .frame(width: w, height: h)
+                    .offset(x: x, y: yTop)
             }
         }
     }
@@ -620,9 +755,17 @@ struct WallElevationThumbnail: View {
     let wall: WallSpec
     let defaults: RoomDefaults
     let verticalChain: String
+    var allWalls: [WallSpec] = []
+    var roomBeams: [RoomBeam] = []
     
     var body: some View {
-        let layout = WallElevationBuilder.build(wall: wall, defaults: defaults, verticalChain: verticalChain)
+        let layout = WallElevationBuilder.build(
+            wall: wall,
+            defaults: defaults,
+            verticalChain: verticalChain,
+            allWalls: allWalls,
+            roomBeams: roomBeams
+        )
         return WallElevationView(layout: layout, showsDimensions: false, showsLabels: false)
     }
 }
