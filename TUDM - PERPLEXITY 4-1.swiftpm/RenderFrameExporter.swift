@@ -59,23 +59,29 @@ enum RenderFrameExporter {
         }
         let size = CGSize(width: pixelWidth, height: pixelHeight)
         
-        // Render FRAME: existing WallElevationView with labels + dimensions off.
-        let frameView = WallElevationView(layout: layout, showsDimensions: false, showsLabels: false)
-            .frame(width: size.width, height: size.height)
-            .background(Color(.systemBackground))
-        let frameRenderer = ImageRenderer(content: frameView)
+        // Render FRAME: wrap in fixed-size ZStack so ImageRenderer has a concrete, non-zero canvas offscreen.
+        let frameContent = ZStack {
+            Color.white
+            WallElevationView(layout: layout, showsDimensions: false, showsLabels: false)
+        }
+        .frame(width: size.width, height: size.height)
+        
+        let frameRenderer = ImageRenderer(content: frameContent)
         frameRenderer.scale = 1.0
         frameRenderer.proposedSize = ProposedViewSize(size)
-        let frameImage = frameRenderer.uiImage ?? UIImage()
+        let frameImage = frameRenderer.uiImage ?? placeholderImage(size: size, color: .white)
         
         // Render MASK: dedicated mask view, pure white on structural regions, pure black elsewhere.
-        let maskView = WallElevationMaskView(layout: layout)
-            .frame(width: size.width, height: size.height)
-            .background(Color.black)
-        let maskRenderer = ImageRenderer(content: maskView)
+        let maskContent = ZStack {
+            Color.black
+            WallElevationMaskView(layout: layout)
+        }
+        .frame(width: size.width, height: size.height)
+        
+        let maskRenderer = ImageRenderer(content: maskContent)
         maskRenderer.scale = 1.0
         maskRenderer.proposedSize = ProposedViewSize(size)
-        let maskImage = maskRenderer.uiImage ?? UIImage()
+        let maskImage = maskRenderer.uiImage ?? placeholderImage(size: size, color: .black)
         
         let baseName = sanitizeFilename(wall.name.isEmpty ? "Wall" : wall.name)
         let prompt = buildPromptMarkdown(
@@ -94,27 +100,64 @@ enum RenderFrameExporter {
     }
     
     /// Writes frame + mask + prompt to temporary URLs so ShareLink / UIActivityViewController can pick them up.
+    /// Always returns at least one URL (falls back to a diagnostic text file if image rendering silently failed).
     @MainActor
     static func writeToTempFiles(_ bundle: ExportBundle) -> [URL] {
         var urls: [URL] = []
         let tmpDir = FileManager.default.temporaryDirectory
+        var diagnostics: [String] = []
+        diagnostics.append("Wall: \(bundle.baseName)")
+        diagnostics.append("Frame image size: \(bundle.frameImage.size.width) x \(bundle.frameImage.size.height)")
+        diagnostics.append("Mask image size: \(bundle.maskImage.size.width) x \(bundle.maskImage.size.height)")
         
-        if let framePNG = bundle.frameImage.pngData() {
+        let framePNG = bundle.frameImage.pngData()
+        diagnostics.append("Frame png data: \(framePNG?.count ?? 0) bytes")
+        if let framePNG {
             let url = tmpDir.appendingPathComponent("\(bundle.baseName)_frame.png")
-            try? framePNG.write(to: url, options: [.atomic])
-            urls.append(url)
+            do {
+                try framePNG.write(to: url, options: [.atomic])
+                urls.append(url)
+            } catch {
+                diagnostics.append("Frame write error: \(error.localizedDescription)")
+            }
         }
-        if let maskPNG = bundle.maskImage.pngData() {
+        let maskPNG = bundle.maskImage.pngData()
+        diagnostics.append("Mask png data: \(maskPNG?.count ?? 0) bytes")
+        if let maskPNG {
             let url = tmpDir.appendingPathComponent("\(bundle.baseName)_mask.png")
-            try? maskPNG.write(to: url, options: [.atomic])
-            urls.append(url)
+            do {
+                try maskPNG.write(to: url, options: [.atomic])
+                urls.append(url)
+            } catch {
+                diagnostics.append("Mask write error: \(error.localizedDescription)")
+            }
         }
         if let promptData = bundle.promptMarkdown.data(using: .utf8) {
             let url = tmpDir.appendingPathComponent("\(bundle.baseName)_prompt.md")
-            try? promptData.write(to: url, options: [.atomic])
-            urls.append(url)
+            do {
+                try promptData.write(to: url, options: [.atomic])
+                urls.append(url)
+            } catch {
+                diagnostics.append("Prompt write error: \(error.localizedDescription)")
+            }
         }
+        
+        // Always drop a diagnostic file so the share sheet is never empty and we can debug.
+        let diagURL = tmpDir.appendingPathComponent("\(bundle.baseName)_export_log.txt")
+        let diagText = diagnostics.joined(separator: "\n")
+        try? diagText.data(using: .utf8)?.write(to: diagURL, options: [.atomic])
+        urls.append(diagURL)
+        
         return urls
+    }
+    
+    /// Fallback solid-color image used when SwiftUI ImageRenderer returns nil offscreen.
+    private static func placeholderImage(size: CGSize, color: UIColor) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            color.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+        }
     }
     
     private static func sanitizeFilename(_ name: String) -> String {
