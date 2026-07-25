@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/schemas/wall_registry_sync.schema.json",
   "title": "Wall Registry Sync File",
-  "description": "Hand-edited file in /WallRegistrySync. Superset of wall_registry_push.schema.json: it adds a `sync` block and tolerates unmeasured walls. Only a file with sync.status \"ready\" is expected to satisfy the push schema.",
+  "description": "Hand-edited file in 'TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync'. Superset of wall_registry_push.schema.json: it adds a `sync` block and tolerates unmeasured walls. Only a file with sync.status \"ready\" is expected to satisfy the push schema, and then only once its `sync` block is stripped.",
   "type": "object",
   "required": ["sync", "room_id", "wall_id", "units", "expected_total_width", "segments"],
   "properties": {

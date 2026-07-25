@@ -40,6 +40,17 @@
       "structural_ids_used": []
     }
   ],
+  "sync_file_policy": {
+    "folder": "TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync",
+    "one_file_per_wall": true,
+    "file_naming": "wall_<n>_registry.json, where <n> matches the position in wall_order",
+    "authority": "These files are the measurement source of truth. Renders and in-app previews are presentation output only.",
+    "editing": "Hand-edit in Working Copy and commit each dimension correction on its own so git history stays an audit trail.",
+    "status_values": ["ready", "needs_measurement", "partial"],
+    "unknown_dimensions": "A wall that has not been measured stays at needs_measurement with an empty segments array. Never invent a width to make a file look complete.",
+    "transport": "Working Copy push/pull moves these files as git history. The app's Sync/Send flow is the separate path that POSTs a ready wall to the backend/perplexity endpoint.",
+    "secrets": "Dimensions only. Endpoint URLs and push tokens live in device UserDefaults, never in these files."
+  },
   "structural_id_policy": {
     "numbering": "continuous_global",
     "restart_per_wall": false,

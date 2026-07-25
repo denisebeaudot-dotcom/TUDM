@@ -36,6 +36,8 @@ let package = Package(
         .executableTarget(
             name: "AppModule",
             path: ".",
+            // Hand-edited Working Copy sync files, not app resources.
+            exclude: ["WallRegistrySync"],
             resources: [
                 .process("Resources")
             ],

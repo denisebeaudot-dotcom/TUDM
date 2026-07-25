@@ -41,9 +41,9 @@ Where the chain entry screen is wired in:
 Backend, schema, and JSON reference live here in `Integration/PerplexityWallPush/`
 so nothing non-Swift is dragged into the app target.
 
-The hand-edited sync files live at the repo root in `WallRegistrySync/` — one JSON file
+The hand-edited sync files live in `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/` — one JSON file
 per wall plus a floorplan index, kept there so they are the first thing visible when the
-repo is opened in Working Copy. See `WallRegistrySync/README.md`.
+repo is opened in Working Copy. See `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/README.md`.
 
 ## Wall 1 source of truth
 
@@ -65,7 +65,7 @@ This exists in three places that must stay in agreement:
 
 - `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistryWall1Example.swift`
 - `Integration/PerplexityWallPush/examples/wall1_registry_example.json`
-- `WallRegistrySync/wall_1_registry.json` — the editable Working Copy file
+- `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/wall_1_registry.json` — the editable Working Copy file
 
 ## How to set the endpoint
 
@@ -216,7 +216,7 @@ app and stored in `UserDefaults`, and there is no Perplexity key in the app at a
 
 ## Working Copy notes
 
-- `WallRegistrySync/` is the folder to edit on the iPad: `wall_1_registry.json` through
+- `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/` is the folder to edit on the iPad: `wall_1_registry.json` through
   `wall_4_registry.json` and `floorplan_registry.json`. Wall 1 is measured; Walls 2-4 are
   templates marked `"status": "needs_measurement"` so no dimension is ever invented. The
   floorplan file holds wall order and the room-wide structural ID policy.

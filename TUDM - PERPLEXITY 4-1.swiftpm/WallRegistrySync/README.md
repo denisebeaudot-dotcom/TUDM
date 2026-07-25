@@ -13,10 +13,24 @@ dimension correction.
 | `wall_4_registry.json` | Wall 4 template. Not measured yet. |
 | `floorplan_registry.json` | Room index: wall order, which file is which, structural ID policy, room-wide rules. |
 
-This folder sits at the repo root, not inside `TUDM - PERPLEXITY 4-1.swiftpm/`, for two
-reasons: the app target's path is `.` so loose JSON inside it becomes an unhandled
-package resource, and the root is the first thing you see when you open the repo in
-Working Copy.
+## Getting these files onto the iPad
+
+1. In Working Copy, open the `TUDM` repository.
+2. Pull the `wall-registry-push-integration` branch (checkout that branch first if you
+   are sitting on `main`).
+3. Browse to `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/`. All six files are there.
+
+The folder lives inside the `.swiftpm` package so it travels with the app source. The
+app target's path is `.`, so `Package.swift` lists `WallRegistrySync` under `exclude` —
+otherwise Swift Playgrounds would treat the JSON as unhandled package resources. If
+Swift Playgrounds ever regenerates `Package.swift` and drops that line, the build still
+works; you just get resource warnings until the `exclude` is put back.
+
+**Working Copy push/pull is git transfer and history only.** It moves these files
+between the iPad and GitHub and keeps the audit trail. It does not talk to the backend.
+The app's **Sync / Send** flow is the separate path: it POSTs a `ready` wall to the
+push endpoint (backend / perplexity). Editing a file in Working Copy does not push it to
+the endpoint, and pushing to the endpoint does not commit anything.
 
 ## Wall 1 source of truth
 
@@ -87,7 +101,9 @@ These files use the same field names as the push payload documented in
 `Integration/PerplexityWallPush/`. Differences:
 
 - A `sync` block is added for editing metadata (`status`, notes, next IDs, template).
-  The backend ignores unknown top-level fields, so a `ready` file can be POSTed as-is.
+  The backend validates the fields it needs and ignores the rest, so a `ready` file can
+  be POSTed as-is. Note the push *schema* sets `additionalProperties: false`, so drop the
+  `sync` block first if you are validating a file against that schema directly.
 - Templates carry `expected_total_width: 0` and an empty `segments` array, which the
   push schema deliberately forbids. That is why they are marked
   `"status": "needs_measurement"` instead of being filled with invented dimensions.
@@ -96,14 +112,15 @@ Schemas:
 
 - `Integration/PerplexityWallPush/schema/wall_registry_push.schema.json` — the wire format.
 - `Integration/PerplexityWallPush/schema/wall_registry_sync.schema.json` — these wall
-  files. A file with `status: ready` must also satisfy the push schema.
+  files. A file with `status: ready` must also satisfy the push schema once its `sync`
+  block is removed.
 
 ## Checking a file before you commit
 
 Syntax:
 
 ```bash
-python3 -m json.tool WallRegistrySync/wall_1_registry.json > /dev/null
+python3 -m json.tool "TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/wall_1_registry.json" > /dev/null
 ```
 
 Totals, for every ready wall:
@@ -111,7 +128,7 @@ Totals, for every ready wall:
 ```bash
 python3 -c "
 import glob, json
-for path in sorted(glob.glob('WallRegistrySync/wall_*_registry.json')):
+for path in sorted(glob.glob('TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/wall_*_registry.json')):
     r = json.load(open(path))
     if r['sync']['status'] != 'ready':
         print(path, r['sync']['status']); continue
@@ -126,7 +143,7 @@ Push a ready file straight at a running local backend:
 ```bash
 curl -X POST http://localhost:8787/wall-registry \
   -H "Content-Type: application/json" \
-  --data @WallRegistrySync/wall_1_registry.json
+  --data @"TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/wall_1_registry.json"
 ```
 
 ## No secrets here
