@@ -71,7 +71,7 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["column", "bookcase", "return", "casing", "window", "door", "opening", "wall", "unknown"]
+          "enum": ["column", "bookcase", "shelf", "return", "casing", "window", "door", "opening", "wall", "unknown"]
         },
         "label": {
           "type": "string",

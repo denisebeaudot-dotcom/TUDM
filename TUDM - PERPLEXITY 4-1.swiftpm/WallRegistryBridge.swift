@@ -33,9 +33,10 @@ enum WallRegistryBridge {
 
     private static func segments(for wall: WallSpec, wallId: String) -> [WallRegistryEnvelope.WallSegment] {
         wall.segments.enumerated().flatMap { (index, segment) -> [WallRegistryEnvelope.WallSegment] in
-            // The app's `label` is the short structural ID ("C1"); its `note` is the description.
+            // The app's `label` is the short structural ID ("C1"); its `note` is the description,
+            // optionally followed by the finish and construction detail for that segment.
             let globalId = segment.label.trimmed.isEmpty ? "SEG\(index + 1)" : segment.label.trimmed
-            let description = segment.note.trimmed.isEmpty ? globalId : segment.note.trimmed
+            let (description, detail) = split(note: segment.note, fallback: globalId)
 
             guard let opening = segment.opening else {
                 return [
@@ -44,7 +45,8 @@ enum WallRegistryBridge {
                         localId: localId(wallId: wallId, globalId: globalId),
                         kind: .init(segment.kind),
                         label: description,
-                        width: segment.width
+                        width: segment.width,
+                        notes: detail
                     )
                 ]
             }
@@ -73,7 +75,8 @@ enum WallRegistryBridge {
                     label: description,
                     width: opening.openingWidth,
                     height: opening.openingHeight,
-                    panelSplit: panelSplit(for: opening)
+                    panelSplit: panelSplit(for: opening),
+                    notes: opening.notes.trimmed.isEmpty ? detail : opening.notes.trimmed
                 )
             )
 
@@ -130,6 +133,20 @@ enum WallRegistryBridge {
 
     // MARK: - Helpers
 
+    /// Splits a segment note into the registry's short `label` and its longer `notes`.
+    /// A note reads "Left wall return. Plain plaster, no seams." — first sentence is the label,
+    /// the rest is the finish/construction detail that has to reach the renderer.
+    private static func split(note: String, fallback: String) -> (label: String, notes: String?) {
+        let trimmed = note.trimmed
+        guard !trimmed.isEmpty else { return (fallback, nil) }
+        guard let separator = trimmed.range(of: ". ") else { return (trimmed, nil) }
+
+        let label = String(trimmed[..<separator.lowerBound]).trimmed
+        let detail = String(trimmed[separator.upperBound...]).trimmed
+        guard !label.isEmpty else { return (trimmed, nil) }
+        return (label, detail.isEmpty ? nil : detail)
+    }
+
     private static func localId(wallId: String, globalId: String) -> String? {
         wallId.isEmpty ? nil : "\(wallId)-\(globalId)"
     }
@@ -148,7 +165,8 @@ extension WallRegistryEnvelope.WallSegmentKind {
     init(_ kind: SegmentKind) {
         switch kind {
         case .column: self = .column
-        case .bookcase, .shelf: self = .bookcase
+        case .bookcase: self = .bookcase
+        case .shelf: self = .shelf
         case .returnZone: self = .return
         case .casing, .trim: self = .casing
         case .windowUnit: self = .window

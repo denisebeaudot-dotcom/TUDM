@@ -75,6 +75,9 @@ struct WallRegistryEnvelope: Codable, Equatable {
     enum WallSegmentKind: String, Codable, CaseIterable {
         case column
         case bookcase
+        /// Open shelf boards spanning between columns. Distinct from `bookcase`, which is a
+        /// carcass with side panels.
+        case shelf
         case `return`
         case casing
         case window

@@ -21,17 +21,17 @@ import Foundation
 //       - Beam 1: 10.00in tall at 84.00-94.00 AFF, front
 //     Wall: Wall 1
 //       Total width: 246.00in
-//       Chain: C SH C WS W WS C SH C
+//       Chain: C SF C RZ WIN RZ C SF C
 //       Segments (left to right):
-//         1. C1  column    8.00w
-//         2. SH1 bookcase  43.00w   5 shelves, 12.00in deep, floor-to-ceiling
-//         3. C2  column    8.00w
-//         4. WS1 wallspace 12.75w
-//         5. W1  window    106.00w x 48.00h  sill 24.00 AFF  panels 1  style picture
-//         6. WS2 wallspace 12.75w
-//         7. C3  column    8.00w
-//         8. SH2 bookcase  39.50w   5 shelves, 12.00in deep, floor-to-ceiling
-//         9. C4  column    8.00w
+//         1. C1  Column      8.00w
+//         2. Z1  Shelf       43.00w   5 open shelves, 9.25in deep, 1.50in thick, boards between flanking columns
+//         3. C2  Column      8.00w
+//         4. Z2  Return Zone 12.75w
+//         5. Z3  Window Unit 96.00w x 60.00h  sill 20.00 AFF  panels 3  style Picture
+//         6. Z4  Return Zone 12.75w
+//         7. C3  Column      8.00w
+//         8. Z5  Shelf       39.50w   5 open shelves, 9.25in deep, 1.50in thick, boards between flanking columns
+//         9. C4  Column      8.00w
 //       Segment sum: 246.00in
 //       Matches wall width: yes
 //
@@ -144,6 +144,12 @@ enum ManifestTxtWriter {
             let depth = s.shelfDepth.map { "\(fmt2($0))in deep" } ?? "depth not set"
             let ftc = (s.isFloorToCeiling ?? false) ? "floor-to-ceiling" : "not floor-to-ceiling"
             body += "   \(shelves), \(depth), \(ftc)"
+        case .shelf:
+            body += "\(fmt2(s.width))w"
+            let shelves = s.shelfCount.map { "\($0) open shelves" } ?? "shelf count not set"
+            let depth = s.shelfDepth.map { "\(fmt2($0))in deep" } ?? "depth not set"
+            let thickness = s.shelfThickness.map { "\(fmt2($0))in thick" } ?? "thickness not set"
+            body += "   \(shelves), \(depth), \(thickness), boards between flanking columns"
         case .windowUnit, .door, .opening:
             if let opening = s.opening {
                 body += "\(fmt2(opening.openingWidth))w x \(fmt2(opening.openingHeight))h"
@@ -168,12 +174,11 @@ enum ManifestTxtWriter {
         return body
     }
     
-    /// A segment's effective width for chain-sum purposes: openings use their opening width when set.
+    /// A segment's effective width for chain-sum purposes. Uses the same rule as
+    /// `WallSpec.segmentTotal`, so an opening contributes unit width plus its casing and the
+    /// manifest's sum can never disagree with the app's.
     private static func segmentEffectiveWidth(_ s: WallSegment) -> Double {
-        if let opening = s.opening, s.width == 0 {
-            return opening.openingWidth
-        }
-        return s.width
+        s.resolvedWidth
     }
     
     // MARK: - Formatters

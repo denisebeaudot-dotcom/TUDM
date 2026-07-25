@@ -40,10 +40,50 @@ C1=8in | Z1=43in | C2=8in | Z2=12.75in | Z3A=5in | Z3B=96in | Z3C=5in | Z4=12.75
 
 Total: `246 in`
 
-- `Z2` and `Z4` are clear wall returns. They are **not** absorbed into the window unit.
+- `Z2` and `Z4` are wall returns. They are **not** absorbed into the window unit.
 - `Z3B` is the window unit: `96 in x 60 in`, panel split `22 / 52 / 22`.
 - `Z3A` / `Z3C` are the window casings, kept separate so the panel split sums to the
   window's own width.
+
+### Approved Wall 1 finish and construction decisions
+
+These are persistent. They live in `wall_1_registry.json` as the wall-level `rules`
+array plus per-segment `notes`, and in the app as `WallSegment.wallOneSeedSegments`
+and `WallSegment.wallOneSeedNotes`.
+
+**Structure**
+
+- `C1` and `C4` terminate Wall 1. Nothing extends past them.
+- Columns are `8 in` wide x `9.25 in` deep.
+- Columns read more structurally defined than the wall returns.
+
+**Shelves (`Z1`, `Z5`)**
+
+- Open shelves, `9.25 in` deep, aligned with the column depth.
+- Boards attach directly between the flanking columns.
+- No bookcase boxes, no inset built-ins, no side panels.
+- No base cabinets.
+- Shelves read as boards, not cabinets or bookcases. Their registry `kind` is `shelf`,
+  not `bookcase`, and the app's segment kind is **Shelf**, not **Bookcase**.
+
+**Wall returns (`Z2`, `Z4`)**
+
+- Flush wall returns, `12.75 in` each.
+- Plain plaster, no seams.
+- Flat and quiet. Structures, openings, casing, and shelves never absorb a wall return.
+
+**Window (`Z3A` / `Z3B` / `Z3C`)**
+
+- `5 in` casing all around. `Z3A` and `Z3C` are its `5 in` vertical legs.
+- Frame and mullions are white.
+- Side lights (`22 in` each) carry a grid pattern.
+- Center panel (`52 in`) stays clear.
+
+### Terminology
+
+Call `Z2` / `Z4` a **wall return** or **return zone**, not generic wallspace. The chain
+shorthand normalizes `WR` to `RZ`, but the semantic label stays "wall return" wherever
+a human reads it.
 
 ## Editing a wall file
 

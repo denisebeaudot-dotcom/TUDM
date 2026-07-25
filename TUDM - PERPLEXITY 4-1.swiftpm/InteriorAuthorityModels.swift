@@ -696,32 +696,127 @@ struct WallSegment: Identifiable, Codable, Hashable {
         return width
     }
     
+    /// Family Room Wall 1, matching `WallRegistrySync/wall_1_registry.json`. Segment labels are the
+    /// room's global structural IDs, so `WallRegistryBridge` emits C1 / Z1 / … / Z3A / Z3B / Z3C
+    /// without renaming anything. The window's 5in casing supplies Z3A and Z3C.
+    ///
+    ///     C1=8 | Z1=43 | C2=8 | Z2=12.75 | Z3A=5 | Z3B=96 | Z3C=5 | Z4=12.75 | C3=8 | Z5=39.5 | C4=8  → 246
     static let wallOneSeedSegments: [WallSegment] = [
-        WallSegment(label: "C1", width: 12, kind: .column, note: "Left column"),
-        WallSegment(label: "SH1", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, shelfDepth: 12, isFloorToCeiling: true),
-        WallSegment(label: "C2", width: 12, kind: .column, note: "Center-left column"),
-        WallSegment(label: "WS1", width: 18, kind: .wallSpace, note: "Left wall space"),
         WallSegment(
-            label: "W1",
+            label: "C1",
+            width: 8,
+            kind: .column,
+            note: "Outer left column. Terminates Wall 1. 8in wide x 9.25in deep. Reads more structurally defined than the wall returns."
+        ),
+        WallSegment(
+            label: "Z1",
+            width: 43,
+            kind: .shelf,
+            note: "Left open shelf bay. Boards attach directly between C1 and C2. No bookcase box, no inset built-in, no side panels, no base cabinet.",
+            shelfCount: 5,
+            shelfDepth: 9.25,
+            shelfThickness: 1.5,
+            shelfSpacedEvenly: true
+        ),
+        WallSegment(
+            label: "C2",
+            width: 8,
+            kind: .column,
+            note: "Inner left column. 8in wide x 9.25in deep."
+        ),
+        WallSegment(
+            label: "Z2",
+            width: 12.75,
+            kind: .returnZone,
+            note: "Left wall return. Flush with the wall plane, plain plaster, no seams. Stays flat and quiet and is never absorbed into the window unit, its casing, the columns, or the shelves."
+        ),
+        WallSegment(
+            label: "Z3",
             width: 0,
             kind: .windowUnit,
-            note: "Center window",
+            note: "Main window unit",
             opening: OpeningSpec(
                 category: .window,
                 windowStyle: .picture,
-                openingWidth: 60,
-                openingHeight: 48,
-                sillOrBottomAFF: 24,
-                wallSpaceAboveUnit: 6,
-                panelCount: 1
+                openingWidth: 96,
+                openingHeight: 60,
+                sillOrBottomAFF: 20,
+                casingLeft: 5,
+                casingRight: 5,
+                casingHead: 5,
+                casingBottom: 5,
+                casingWidth: 5,
+                wallSpaceAboveUnit: 11,
+                panelCount: 3,
+                mullionsVertical: 2,
+                muntinsRows: 3,
+                muntinsCols: 2,
+                panels: [
+                    WindowPanel(label: "Left side light", widthShare: 22, hasMuntinGrid: true),
+                    WindowPanel(label: "Center", widthShare: 52, hasMuntinGrid: false),
+                    WindowPanel(label: "Right side light", widthShare: 22, hasMuntinGrid: true)
+                ],
+                notes: "96in x 60in. 22 / 52 / 22 panel split. Side lights carry a grid pattern, center panel stays clear. Frame, mullions, and the 5in casing all around are white."
             )
         ),
-        WallSegment(label: "WS2", width: 18, kind: .wallSpace, note: "Right wall space"),
-        WallSegment(label: "C3", width: 12, kind: .column, note: "Center-right column"),
-        WallSegment(label: "SH2", width: 24, kind: .bookcase, note: "Shelf bay", shelfCount: 5, shelfDepth: 12, isFloorToCeiling: true),
-        WallSegment(label: "C4", width: 12, kind: .column, note: "Right column")
+        WallSegment(
+            label: "Z4",
+            width: 12.75,
+            kind: .returnZone,
+            note: "Right wall return. Flush with the wall plane, plain plaster, no seams. Stays flat and quiet and is never absorbed into the window unit, its casing, the columns, or the shelves."
+        ),
+        WallSegment(
+            label: "C3",
+            width: 8,
+            kind: .column,
+            note: "Inner right column. 8in wide x 9.25in deep."
+        ),
+        WallSegment(
+            label: "Z5",
+            width: 39.5,
+            kind: .shelf,
+            note: "Right open shelf bay. Boards attach directly between C3 and C4. No bookcase box, no inset built-in, no side panels, no base cabinet.",
+            shelfCount: 5,
+            shelfDepth: 9.25,
+            shelfThickness: 1.5,
+            shelfSpacedEvenly: true
+        ),
+        WallSegment(
+            label: "C4",
+            width: 8,
+            kind: .column,
+            note: "Outer right column. Terminates Wall 1. 8in wide x 9.25in deep. Reads more structurally defined than the wall returns."
+        )
     ]
-    
+
+    static let wallOneSeedTotalWidth: Double = 246
+
+    /// Wall 1 runs 8in x 9.25in columns under an 8in beam zone at a 96in ceiling, not the room-wide
+    /// RGRST defaults. Applied as wall overrides so no other wall's columns are resized.
+    static let wallOneSeedDefaults = RoomDefaults(
+        ceilingHeight: 96,
+        crownHeight: 0,
+        baseboardHeight: 8,
+        beamHeight: 8,
+        beamRangeAFF: "88.00-96.00",
+        columnWidth: 8,
+        columnDepth: 9.25,
+        columnHeight: 88
+    )
+
+    /// Persistent Wall 1 decisions that have no dedicated field on the model. Written into
+    /// `WallSpec.notes`, which `WallRegistryBridge` forwards into the payload's `rules`.
+    static let wallOneSeedNotes = """
+    Wall 1 locked decisions:
+    - C1 and C4 terminate Wall 1. Nothing extends past them.
+    - Columns are 8in wide x 9.25in deep and read more structurally defined than the wall returns.
+    - Open shelves are 9.25in deep, aligned with the column depth, and attach directly between the flanking columns.
+    - Shelves read as boards. No bookcase boxes, no inset built-ins, no side panels, no base cabinets.
+    - Z2 and Z4 are flush wall returns, 12.75in each, in plain plaster with no seams. They stay flat and quiet and are never absorbed into the columns, shelves, casing, or window unit.
+    - The window carries 5in casing all around; Z3A and Z3C are its 5in vertical legs.
+    - Window frame and mullions are white. Side lights carry a grid pattern, the center panel stays clear.
+    """
+
     /// Parses horizontal chain shorthand into segments.
     ///
     /// `WallSpec.segments` is the authoritative description of a wall; a chain string is only

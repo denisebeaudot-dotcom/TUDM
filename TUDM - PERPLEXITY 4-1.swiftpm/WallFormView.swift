@@ -970,6 +970,15 @@ struct WallFormView: View {
     }
 
     private func applySeed() {
+        // Wall 1's own structure defaults have to land before applyDefaults runs, or the 8in
+        // columns get resized to the room-wide column width.
+        draft.usesOverrides = true
+        draft.overrides = WallSegment.wallOneSeedDefaults
+        draft.totalWidth = WallSegment.wallOneSeedTotalWidth
+        if draft.notes.trimmed.isEmpty {
+            draft.notes = WallSegment.wallOneSeedNotes
+        }
+
         var segs = WallSegment.wallOneSeedSegments
         for i in segs.indices {
             applyDefaults(to: &segs[i])

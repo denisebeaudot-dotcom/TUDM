@@ -261,7 +261,8 @@ extension WallRegistryEnvelope.WallSegmentKind {
         switch self {
         case .column: return "Column"
         case .bookcase: return "Bookcase"
-        case .return: return "Clear Return"
+        case .shelf: return "Open Shelves"
+        case .return: return "Wall Return"
         case .casing: return "Casing / Trim"
         case .window: return "Window Unit"
         case .door: return "Door"

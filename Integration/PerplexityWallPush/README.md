@@ -73,17 +73,33 @@ Total: `246 in`
 
 Locked meaning:
 
-- `Z2` is a clear **left** wall return. It is not part of the window unit.
-- `Z4` is a clear **right** wall return. It is not part of the window unit.
-- `Z3B` is the window unit and stays `96 in x 60 in`.
-- Window panel split stays `22 / 52 / 22`.
+- `C1` and `C4` **terminate** Wall 1. Nothing on this wall extends past them.
+- Columns (`C1`-`C4`) are `8 in` wide x `9.25 in` deep, and read more structurally
+  defined than the wall returns.
+- `Z1` / `Z5` are **open shelves**, `9.25 in` deep, aligned with the column depth. The
+  boards attach directly between the flanking columns. No bookcase boxes, no inset
+  built-ins, no side panels, no base cabinets. They read as boards, not cabinetry.
+- `Z2` is the **left wall return**, `Z4` is the **right wall return**. Both are flush
+  `12.75 in` returns in plain plaster with no seams. They stay flat and quiet and are
+  never absorbed into the columns, shelves, casing, or window unit.
+- `Z3B` is the window unit and stays `96 in x 60 in`, with `5 in` casing all around.
+  `Z3A` / `Z3C` are its `5 in` vertical casing legs.
+- Window panel split stays `22 / 52 / 22`. The side lights carry a grid pattern; the
+  center panel stays clear. Frame and mullions are white.
 - Global structural IDs continue across the room and do not restart wall by wall.
+
+Wall returns keep the `wall return` / `return zone` wording. The chain shorthand
+normalizes `WR` to `RZ`, but the human-readable label stays "wall return".
 
 This exists in three places that must stay in agreement:
 
 - `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistryWall1Example.swift`
 - `Integration/PerplexityWallPush/examples/wall1_registry_example.json`
 - `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/wall_1_registry.json` — the editable Working Copy file
+
+A fourth copy lives in the app as `WallSegment.wallOneSeedSegments` (the Edit Wall
+modal's **Apply Seed** button), which carries the same chain plus the per-segment
+depths, shelf counts, casing, and panel grid.
 
 ## How to set the endpoint
 

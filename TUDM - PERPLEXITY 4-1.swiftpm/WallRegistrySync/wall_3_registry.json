@@ -13,6 +13,7 @@
     "allowed_kinds": [
       "column",
       "bookcase",
+      "shelf",
       "return",
       "casing",
       "window",
