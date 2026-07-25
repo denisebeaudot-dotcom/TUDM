@@ -1,0 +1,57 @@
+{
+  "sync": {
+    "file_role": "wall",
+    "status": "needs_measurement",
+    "edit_note": "Template. Nothing here is measured yet. Fill in expected_total_width and segments from a real measure, then set sync.status to \"ready\".",
+    "floorplan_file": "floorplan_registry.json",
+    "next_structural_ids": {
+      "column": "C5",
+      "zone": "Z6",
+      "note": "Wall 1 already uses C1-C4 and Z1-Z5. Structural numbering is continuous across the whole room, so the first new column on this wall is C5 and the first new zone is Z6 unless the floorplan file says otherwise. Do not restart at C1."
+    },
+    "allowed_kinds": [
+      "column",
+      "bookcase",
+      "return",
+      "casing",
+      "window",
+      "door",
+      "opening",
+      "wall",
+      "unknown"
+    ],
+    "segment_template": {
+      "global_id": "C5",
+      "local_id": "W3-C5",
+      "kind": "column",
+      "label": "Describe what this segment is",
+      "width": 0,
+      "notes": "Optional. Copy this object into segments, renumber, and set a real width."
+    }
+  },
+  "room_id": "family_room",
+  "wall_id": "W3",
+  "units": "inches",
+  "expected_total_width": 0,
+  "source_app": "TUDM Interior Authority",
+  "schema_version": "wall-registry-v1",
+  "updated_at": null,
+  "segments": [],
+  "vertical": {
+    "ceiling_height": null,
+    "beam_bottom": null,
+    "beam_zone_height": null,
+    "sill_or_base_reference": null,
+    "window_head": null,
+    "header_top": null
+  },
+  "rules": [
+    "Clear wall returns beside an opening remain separate locked zones and are not absorbed into the opening unit.",
+    "Global IDs are continuous across the room and do not restart wall by wall.",
+    "An opening with casings expands into three segments: <id>A left casing, <id>B unit, <id>C right casing.",
+    "Any panel_split must add up to that segment's own width, not to the casing-inclusive width.",
+    "expected_total_width must equal the sum of all segment widths within 0.001.",
+    "Photoreal rendering uses a persistent structural lock rule.",
+    "Renderer may color, texture, shadow, and enhance lines only inside the measured framework."
+  ]
+}

@@ -41,6 +41,10 @@ Where the chain entry screen is wired in:
 Backend, schema, and JSON reference live here in `Integration/PerplexityWallPush/`
 so nothing non-Swift is dragged into the app target.
 
+The hand-edited sync files live at the repo root in `WallRegistrySync/` — one JSON file
+per wall plus a floorplan index, kept there so they are the first thing visible when the
+repo is opened in Working Copy. See `WallRegistrySync/README.md`.
+
 ## Wall 1 source of truth
 
 ```text
@@ -57,10 +61,11 @@ Locked meaning:
 - Window panel split stays `22 / 52 / 22`.
 - Global structural IDs continue across the room and do not restart wall by wall.
 
-This exists in two places that must stay in agreement:
+This exists in three places that must stay in agreement:
 
 - `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistryWall1Example.swift`
 - `Integration/PerplexityWallPush/examples/wall1_registry_example.json`
+- `WallRegistrySync/wall_1_registry.json` — the editable Working Copy file
 
 ## How to set the endpoint
 
@@ -211,6 +216,13 @@ app and stored in `UserDefaults`, and there is no Perplexity key in the app at a
 
 ## Working Copy notes
 
+- `WallRegistrySync/` is the folder to edit on the iPad: `wall_1_registry.json` through
+  `wall_4_registry.json` and `floorplan_registry.json`. Wall 1 is measured; Walls 2-4 are
+  templates marked `"status": "needs_measurement"` so no dimension is ever invented. The
+  floorplan file holds wall order and the room-wide structural ID policy.
+- Those files use the same field names as the push payload, plus a `sync` block for
+  editing metadata. The backend ignores unknown top-level fields, so a wall file whose
+  `sync.status` is `ready` can be POSTed as-is.
 - Commit whenever a structural chain changes, e.g. `Correct Wall 1 returns and right bookcase`. Git history is the audit trail for dimension corrections.
 - Swift Playgrounds shows the `.swiftpm` folder as the app; `Integration/` sits beside it and is invisible to the app target.
 - Before committing, glance at the diff for `.env` or any key-shaped string.

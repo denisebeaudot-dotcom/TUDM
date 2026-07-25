@@ -1,0 +1,61 @@
+{
+  "sync": {
+    "file_role": "floorplan",
+    "status": "partial",
+    "edit_note": "Room-level index for the per-wall sync files. Edit this file when a wall is added, renamed, or reordered. Wall dimensions themselves live only in the wall files."
+  },
+  "room_id": "family_room",
+  "units": "inches",
+  "source_app": "TUDM Interior Authority",
+  "schema_version": "wall-registry-v1",
+  "updated_at": "2026-07-25T12:00:00Z",
+  "wall_order": ["W1", "W2", "W3", "W4"],
+  "walls": [
+    {
+      "wall_id": "W1",
+      "file": "wall_1_registry.json",
+      "status": "ready",
+      "expected_total_width": 246,
+      "structural_ids_used": ["C1", "Z1", "C2", "Z2", "Z3A", "Z3B", "Z3C", "Z4", "C3", "Z5", "C4"]
+    },
+    {
+      "wall_id": "W2",
+      "file": "wall_2_registry.json",
+      "status": "needs_measurement",
+      "expected_total_width": 0,
+      "structural_ids_used": []
+    },
+    {
+      "wall_id": "W3",
+      "file": "wall_3_registry.json",
+      "status": "needs_measurement",
+      "expected_total_width": 0,
+      "structural_ids_used": []
+    },
+    {
+      "wall_id": "W4",
+      "file": "wall_4_registry.json",
+      "status": "needs_measurement",
+      "expected_total_width": 0,
+      "structural_ids_used": []
+    }
+  ],
+  "structural_id_policy": {
+    "numbering": "continuous_global",
+    "restart_per_wall": false,
+    "description": "Like structural elements share one continuous numbering sequence across the whole room. Columns run C1, C2, C3... and zones run Z1, Z2, Z3... regardless of which wall they sit on.",
+    "next_column_id": "C5",
+    "next_zone_id": "Z6",
+    "note": "Wall 1 consumes C1-C4 and Z1-Z5, so the next new column is C5 and the next new zone is Z6 unless the user specifies otherwise.",
+    "opening_suffixes": "An opening with casings expands into <id>A left casing, <id>B unit, <id>C right casing. It consumes a single zone number.",
+    "local_id_format": "<wall_id>-<global_id>, e.g. W1-Z3B"
+  },
+  "rules": [
+    "Global structural IDs are continuous across the room and do not restart wall by wall.",
+    "Clear wall returns beside an opening remain separate locked zones and are not absorbed into the opening unit.",
+    "Each wall's expected_total_width must equal the sum of that wall's segment widths within 0.001.",
+    "Photoreal rendering uses a persistent structural lock rule.",
+    "Renderer may color, texture, shadow, and enhance lines only inside the measured framework.",
+    "The registry is the measurement authority. Renders are presentation output only."
+  ]
+}

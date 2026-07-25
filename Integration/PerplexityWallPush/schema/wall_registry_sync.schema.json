@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/wall_registry_sync.schema.json",
+  "title": "Wall Registry Sync File",
+  "description": "Hand-edited file in /WallRegistrySync. Superset of wall_registry_push.schema.json: it adds a `sync` block and tolerates unmeasured walls. Only a file with sync.status \"ready\" is expected to satisfy the push schema.",
+  "type": "object",
+  "required": ["sync", "room_id", "wall_id", "units", "expected_total_width", "segments"],
+  "properties": {
+    "sync": {
+      "type": "object",
+      "required": ["file_role", "status"],
+      "properties": {
+        "file_role": { "const": "wall" },
+        "status": { "enum": ["ready", "needs_measurement"] },
+        "edit_note": { "type": "string" },
+        "floorplan_file": { "type": "string" },
+        "chain": { "type": "string" },
+        "next_structural_ids": { "type": "object" },
+        "allowed_kinds": { "type": "array", "items": { "type": "string" } },
+        "segment_template": { "type": "object" }
+      }
+    },
+    "room_id": { "type": "string", "minLength": 1 },
+    "wall_id": { "type": "string", "minLength": 1 },
+    "units": { "enum": ["inches", "feet", "millimeters", "centimeters"] },
+    "expected_total_width": { "type": "number", "minimum": 0 },
+    "source_app": { "type": "string" },
+    "schema_version": { "type": "string" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" },
+    "segments": {
+      "type": "array",
+      "items": { "$ref": "wall_registry_push.schema.json#/$defs/segment" }
+    },
+    "vertical": { "type": "object" },
+    "rules": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "sync": { "properties": { "status": { "const": "ready" } } } },
+        "required": ["sync"]
+      },
+      "then": {
+        "properties": {
+          "expected_total_width": { "exclusiveMinimum": 0 },
+          "segments": { "minItems": 1 },
+          "updated_at": { "type": "string" }
+        },
+        "required": ["source_app", "schema_version", "updated_at"]
+      }
+    }
+  ]
+}
