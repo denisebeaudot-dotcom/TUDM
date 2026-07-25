@@ -45,6 +45,9 @@ struct WallFormView: View {
     @State private var showingDiscardConfirm: Bool = false
     @State private var exportedFrameURLs: [URL] = []
     @State private var showingFrameShareSheet: Bool = false
+    @State private var showingExportResultAlert: Bool = false
+    @State private var exportResultTitle: String = ""
+    @State private var exportResultMessage: String = ""
     
     enum WallPreviewMode: String, CaseIterable, Identifiable {
         case ortho = "Ortho"
@@ -426,9 +429,14 @@ struct WallFormView: View {
                     LabeledContent("Matches Wall Width", value: matchesWallWidth ? "Yes" : "No")
                     
                     Button {
-                        exportRenderFrame()
+                        exportRenderFrameToPhotos()
                     } label: {
-                        Label("Export Render Frame", systemImage: "square.and.arrow.up.on.square")
+                        Label("Export Render Frame to Photos", systemImage: "photo.on.rectangle.angled")
+                    }
+                    Button {
+                        exportRenderFrameViaShare()
+                    } label: {
+                        Label("Export via Share Sheet", systemImage: "square.and.arrow.up")
                     }
                 }
             }
@@ -457,6 +465,20 @@ struct WallFormView: View {
             }
             .sheet(isPresented: $showingFrameShareSheet) {
                 ShareSheet(items: exportedFrameURLs)
+            }
+            .alert(exportResultTitle, isPresented: $showingExportResultAlert) {
+                Button("OK", role: .cancel) { }
+                if !exportedFrameURLs.isEmpty {
+                    Button("Share Prompt File") { showingFrameShareSheet = true }
+                }
+                Button("Copy Prompt Text") {
+                    if let url = exportedFrameURLs.first(where: { $0.pathExtension == "md" }),
+                       let text = try? String(contentsOf: url) {
+                        UIPasteboard.general.string = text
+                    }
+                }
+            } message: {
+                Text(exportResultMessage)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -824,8 +846,35 @@ struct WallFormView: View {
         }
     }
     
-    // Exports FRAME + MASK + prompt for this wall to temp files and opens the share sheet.
-    private func exportRenderFrame() {
+    // Exports FRAME + MASK to Photos, plus writes the prompt .md to a temp file for later sharing/copying.
+    private func exportRenderFrameToPhotos() {
+        let bundle = RenderFrameExporter.export(
+            wall: previewWall,
+            defaults: effectiveDefaults,
+            verticalChain: draft.verticalChainString,
+            allWalls: [previewWall],
+            roomBeams: []
+        )
+        // Keep prompt file URL around so the alert can offer Share Prompt / Copy Prompt Text.
+        if let promptURL = RenderFrameExporter.writePromptFile(bundle) {
+            exportedFrameURLs = [promptURL]
+        } else {
+            exportedFrameURLs = []
+        }
+        RenderFrameExporter.saveToPhotos(bundle) { savedCount, errorMessage in
+            if let err = errorMessage {
+                exportResultTitle = "Photos Save Failed"
+                exportResultMessage = err
+            } else {
+                exportResultTitle = "Saved to Photos"
+                exportResultMessage = "\(savedCount) images (frame + mask) saved to your Photos library. Frame image is the color one; mask is the black-and-white one. The paste-ready prompt is also available below."
+            }
+            showingExportResultAlert = true
+        }
+    }
+    
+    // Exports FRAME + MASK + prompt to temp files and opens the iOS share sheet (fallback path).
+    private func exportRenderFrameViaShare() {
         let bundle = RenderFrameExporter.export(
             wall: previewWall,
             defaults: effectiveDefaults,

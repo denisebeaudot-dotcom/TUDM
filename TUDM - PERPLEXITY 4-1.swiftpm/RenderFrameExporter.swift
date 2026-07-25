@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Photos
 
 // MARK: - Render Frame Exporter
 //
@@ -118,6 +119,43 @@ enum RenderFrameExporter {
             promptMarkdown: prompt,
             baseName: baseName
         )
+    }
+    
+    /// Saves frame + mask PNGs directly to the user's Photos library. Prompts for permission on first use.
+    /// Completion returns (savedCount, errorMessage). Prompt markdown is written to a temp file whose URL is returned separately.
+    @MainActor
+    static func saveToPhotos(_ bundle: ExportBundle, completion: @escaping (Int, String?) -> Void) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                DispatchQueue.main.async { completion(0, "Photos access denied. Enable in Settings → Privacy → Photos → Swift Playgrounds → TUDM.") }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                if let framePNG = bundle.frameImage.pngData(), let img = UIImage(data: framePNG) {
+                    PHAssetChangeRequest.creationRequestForAsset(from: img)
+                }
+                if let maskPNG = bundle.maskImage.pngData(), let img = UIImage(data: maskPNG) {
+                    PHAssetChangeRequest.creationRequestForAsset(from: img)
+                }
+            }, completionHandler: { success, error in
+                DispatchQueue.main.async {
+                    if success {
+                        completion(2, nil)
+                    } else {
+                        completion(0, error?.localizedDescription ?? "Photos save failed for an unknown reason.")
+                    }
+                }
+            })
+        }
+    }
+    
+    /// Writes the prompt markdown to a temp file and returns its URL (Photos can't hold text files, so we still surface it separately).
+    @MainActor
+    static func writePromptFile(_ bundle: ExportBundle) -> URL? {
+        guard let data = bundle.promptMarkdown.data(using: .utf8) else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(bundle.baseName)_prompt.md")
+        try? data.write(to: url, options: [.atomic])
+        return url
     }
     
     @MainActor
