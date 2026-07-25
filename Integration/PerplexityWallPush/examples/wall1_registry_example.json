@@ -1,0 +1,107 @@
+{
+  "room_id": "family_room",
+  "wall_id": "W1",
+  "units": "inches",
+  "expected_total_width": 246,
+  "source_app": "TUDM Interior Authority",
+  "schema_version": "wall-registry-v1",
+  "updated_at": "2026-07-25T12:00:00Z",
+  "segments": [
+    {
+      "global_id": "C1",
+      "local_id": "W1-C1",
+      "kind": "column",
+      "label": "Outer left column",
+      "width": 8
+    },
+    {
+      "global_id": "Z1",
+      "local_id": "W1-Z1",
+      "kind": "bookcase",
+      "label": "Left bookcase bay",
+      "width": 43
+    },
+    {
+      "global_id": "C2",
+      "local_id": "W1-C2",
+      "kind": "column",
+      "label": "Inner left column",
+      "width": 8
+    },
+    {
+      "global_id": "Z2",
+      "local_id": "W1-Z2",
+      "kind": "return",
+      "label": "Left clear wall return",
+      "width": 12.75,
+      "notes": "Must remain clear and separate from the window unit."
+    },
+    {
+      "global_id": "Z3A",
+      "local_id": "W1-Z3A",
+      "kind": "casing",
+      "label": "Left window casing/trim",
+      "width": 5
+    },
+    {
+      "global_id": "Z3B",
+      "local_id": "W1-Z3B",
+      "kind": "window",
+      "label": "Main window unit",
+      "width": 96,
+      "height": 60,
+      "panel_split": [22, 52, 22],
+      "notes": "Center panel clear/no mullions. Side panels use vertical mullions only."
+    },
+    {
+      "global_id": "Z3C",
+      "local_id": "W1-Z3C",
+      "kind": "casing",
+      "label": "Right window casing/trim",
+      "width": 5
+    },
+    {
+      "global_id": "Z4",
+      "local_id": "W1-Z4",
+      "kind": "return",
+      "label": "Right clear wall return",
+      "width": 12.75,
+      "notes": "Must remain clear and separate from the window unit."
+    },
+    {
+      "global_id": "C3",
+      "local_id": "W1-C3",
+      "kind": "column",
+      "label": "Inner right column",
+      "width": 8
+    },
+    {
+      "global_id": "Z5",
+      "local_id": "W1-Z5",
+      "kind": "bookcase",
+      "label": "Right bookcase bay",
+      "width": 39.5
+    },
+    {
+      "global_id": "C4",
+      "local_id": "W1-C4",
+      "kind": "column",
+      "label": "Outer right column",
+      "width": 8
+    }
+  ],
+  "vertical": {
+    "ceiling_height": 96,
+    "beam_bottom": 88,
+    "beam_zone_height": 8,
+    "sill_or_base_reference": 20,
+    "window_head": 80,
+    "header_top": 85
+  },
+  "rules": [
+    "Clear wall returns beside the window remain separate locked zones and are not absorbed into the window unit.",
+    "Global IDs are continuous across the room.",
+    "Photoreal rendering uses a persistent structural lock rule.",
+    "Renderer may color, texture, shadow, and enhance lines only inside the measured framework."
+  ]
+}

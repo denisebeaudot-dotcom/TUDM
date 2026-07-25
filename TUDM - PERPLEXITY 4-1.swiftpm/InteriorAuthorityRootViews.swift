@@ -360,6 +360,7 @@ struct RoomDetailView: View {
     @State private var showingWorksheet = false
     @State private var showingNewBeam = false
     @State private var editingBeam: RoomBeam?
+    @State private var pushingWall: WallSpec?
     
     private var projectIndex: Int? {
         store.projects.firstIndex(where: { $0.id == projectID })
@@ -484,6 +485,25 @@ struct RoomDetailView: View {
                         }
                     }
                     
+                    if !room.wallSpecs.isEmpty {
+                        Section {
+                            ForEach(room.wallSpecs) { wall in
+                                Button {
+                                    pushingWall = wall
+                                } label: {
+                                    Label(
+                                        wall.name.trimmed.isEmpty ? "Untitled wall" : wall.name,
+                                        systemImage: "paperplane"
+                                    )
+                                }
+                            }
+                        } header: {
+                            Text("Perplexity Wall Registry")
+                        } footer: {
+                            Text("Validate a wall's measured chain and push it to your backend proxy as the render source of truth.")
+                        }
+                    }
+                    
                     Section("Room Beams") {
                         if room.beams.isEmpty {
                             Text("No beams. Beams span between columns across walls.")
@@ -575,6 +595,9 @@ struct RoomDetailView: View {
                 }
                 .sheet(isPresented: $showingWorksheet) {
                     WorksheetPreviewSheet(project: project, room: room)
+                }
+                .sheet(item: $pushingWall) { wall in
+                    WallRegistryPushView(wall: wall, room: room)
                 }
                 .sheet(isPresented: $showingNewBeam) {
                     BeamFormView(

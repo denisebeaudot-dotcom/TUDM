@@ -1,0 +1,20 @@
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
+# Backend proxy runtime
+node_modules/
+Integration/PerplexityWallPush/backend/data/
+
+# Xcode / Swift Playgrounds
+.build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+
+# macOS / iOS
+.DS_Store
