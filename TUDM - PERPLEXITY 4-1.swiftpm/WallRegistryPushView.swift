@@ -2,7 +2,7 @@ import SwiftUI
 
 /// "Validate Wall" and "Send to Perplexity" for a single wall, plus the current source of truth.
 struct WallRegistryPushView: View {
-    let wall: WallSpec
+    let wall: LockedWall
     let room: Room
 
     @Environment(\.dismiss) private var dismiss

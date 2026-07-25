@@ -55,10 +55,10 @@ enum RenderFrameExporter {
     
     @MainActor
     static func export(
-        wall: WallSpec,
+        wall: LockedWall,
         defaults: RoomDefaults,
         verticalChain: String,
-        allWalls: [WallSpec],
+        allWalls: [LockedWall],
         roomBeams: [RoomBeam],
         styleDNADescription: String? = nil
     ) -> ExportBundle {
@@ -210,7 +210,7 @@ enum RenderFrameExporter {
     }
     
     private static func buildPromptMarkdown(
-        wall: WallSpec,
+        wall: LockedWall,
         layout: WallElevationLayout,
         baseName: String,
         styleDNADescription: String?

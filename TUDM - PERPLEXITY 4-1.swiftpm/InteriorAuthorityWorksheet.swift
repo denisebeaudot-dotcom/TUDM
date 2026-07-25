@@ -46,7 +46,7 @@ enum WorksheetRenderer {
                 
                 for (index, wall) in room.wallSpecs.enumerated() {
                     ensureRoom(for: 260, cursor: &cursor, ctx: ctx)
-                    drawWallBlock(wall: wall, index: index, cursor: &cursor, ctx: ctx)
+                    drawWallBlock(wall: wall.locked, index: index, cursor: &cursor, ctx: ctx)
                 }
                 
                 if room.wallSpecs.isEmpty {
@@ -145,7 +145,7 @@ enum WorksheetRenderer {
         cursor.advance(by: 16)
     }
     
-    private static func drawWallBlock(wall: WallSpec, index: Int, cursor: inout PageCursor, ctx: UIGraphicsPDFRendererContext) {
+    private static func drawWallBlock(wall: LockedWall, index: Int, cursor: inout PageCursor, ctx: UIGraphicsPDFRendererContext) {
         drawSectionTitle("Wall \(index + 1) — \(wall.name.isEmpty ? "Unnamed" : wall.name)", cursor: &cursor)
         
         let col1 = cursor.left
