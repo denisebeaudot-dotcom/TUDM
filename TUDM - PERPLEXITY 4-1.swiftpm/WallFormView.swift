@@ -43,6 +43,8 @@ struct WallFormView: View {
     @State private var previewMode: WallPreviewMode = .ortho
     @State private var showingNameRequiredAlert: Bool = false
     @State private var showingDiscardConfirm: Bool = false
+    @State private var exportedFrameURLs: [URL] = []
+    @State private var showingFrameShareSheet: Bool = false
     
     enum WallPreviewMode: String, CaseIterable, Identifiable {
         case ortho = "Ortho"
@@ -422,6 +424,12 @@ struct WallFormView: View {
                     
                     LabeledContent("Segment Sum", value: formatted(segmentSum))
                     LabeledContent("Matches Wall Width", value: matchesWallWidth ? "Yes" : "No")
+                    
+                    Button {
+                        exportRenderFrame()
+                    } label: {
+                        Label("Export Render Frame", systemImage: "square.and.arrow.up.on.square")
+                    }
                 }
             }
             .environment(\.editMode, $editMode)
@@ -446,6 +454,9 @@ struct WallFormView: View {
                 Button("Keep Editing", role: .cancel) { }
             } message: {
                 Text("Any changes to this new wall will be lost.")
+            }
+            .sheet(isPresented: $showingFrameShareSheet) {
+                ShareSheet(items: exportedFrameURLs)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -811,6 +822,20 @@ struct WallFormView: View {
         case .casing, .trim: return 4
         case .wallSpace, .wall, .returnZone: return 24
         }
+    }
+    
+    // Exports FRAME + MASK + prompt for this wall to temp files and opens the share sheet.
+    private func exportRenderFrame() {
+        let bundle = RenderFrameExporter.export(
+            wall: previewWall,
+            defaults: effectiveDefaults,
+            verticalChain: draft.verticalChainString,
+            allWalls: [previewWall],
+            roomBeams: []
+        )
+        let urls = RenderFrameExporter.writeToTempFiles(bundle)
+        exportedFrameURLs = urls
+        showingFrameShareSheet = !urls.isEmpty
     }
     
     // Assigns C1, C2, C3... to every .column segment in left-to-right order.
