@@ -5,6 +5,10 @@ import Observation
 final class InteriorAuthorityStore {
     var projects: [Project] = []
     
+    /// Optional sync target for automatic wall_manifests.txt writes on save().
+    /// Wired in InteriorAuthorityApp after both are constructed.
+    var manifestSyncFolder: ManifestSyncFolder?
+    
     private let saveKey = "InteriorAuthorityProjects"
     
     init() {
@@ -168,6 +172,9 @@ final class InteriorAuthorityStore {
         } catch {
             print("Failed to save projects: \(error)")
         }
+        // Auto-write the human-readable manifest to the user's designated Files folder
+        // (typically the Working Copy repo folder). Silent no-op if no folder is set.
+        manifestSyncFolder?.writeManifest(projects: projects)
     }
     
     func load() {

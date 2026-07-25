@@ -8,6 +8,7 @@ enum InteriorRoute: Hashable {
 
 struct InteriorAuthorityRootView: View {
     @Environment(InteriorAuthorityStore.self) private var store
+    @Environment(ManifestSyncFolder.self) private var syncFolder
     @State private var showingNewProject = false
     @State private var showingProjectExporter = false
     @State private var showingProjectImporter = false
@@ -17,10 +18,60 @@ struct InteriorAuthorityRootView: View {
     @State private var importErrorMessage = ""
     @State private var showingExportResult = false
     @State private var exportResultMessage = ""
+    @State private var showingSyncFolderPicker = false
+    @State private var showingSyncFolderError = false
+    @State private var syncFolderErrorMessage = ""
     
     var body: some View {
         NavigationStack {
             List {
+                Section("Manifest Sync") {
+                    if let path = syncFolder.displayPath {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Folder:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(path)
+                                .font(.footnote)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                        if let ts = syncFolder.lastWriteAt {
+                            HStack {
+                                Text("Last write:")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(ts.formatted(date: .abbreviated, time: .shortened))
+                            }
+                            .font(.caption)
+                        }
+                        if let status = syncFolder.lastWriteStatus, status != "ok" {
+                            Text(status)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                        Button {
+                            _ = syncFolder.writeManifest(projects: store.projects)
+                        } label: {
+                            Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        Button(role: .destructive) {
+                            syncFolder.clearFolder()
+                        } label: {
+                            Label("Clear Sync Folder", systemImage: "xmark.circle")
+                        }
+                    } else {
+                        Text("Pick a Files folder (your Working Copy TUDM repo) and the app will auto-write wall_manifests.txt every time you save.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            showingSyncFolderPicker = true
+                        } label: {
+                            Label("Set Sync Folder", systemImage: "folder.badge.plus")
+                        }
+                    }
+                }
+                
                 if store.projects.isEmpty {
                     ContentUnavailableView(
                         "No Projects",
@@ -163,6 +214,33 @@ struct InteriorAuthorityRootView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(exportResultMessage)
+            }
+            // Sync folder picker (Files app — pick your Working Copy TUDM repo folder)
+            .fileImporter(
+                isPresented: $showingSyncFolderPicker,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    do {
+                        try syncFolder.setFolder(from: url)
+                        // Write immediately so the file appears in Working Copy right away.
+                        _ = syncFolder.writeManifest(projects: store.projects)
+                    } catch {
+                        syncFolderErrorMessage = error.localizedDescription
+                        showingSyncFolderError = true
+                    }
+                case .failure(let error):
+                    syncFolderErrorMessage = error.localizedDescription
+                    showingSyncFolderError = true
+                }
+            }
+            .alert("Sync Folder Error", isPresented: $showingSyncFolderError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(syncFolderErrorMessage)
             }
         }
     }
