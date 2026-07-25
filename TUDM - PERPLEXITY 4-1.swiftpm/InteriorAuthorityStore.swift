@@ -185,4 +185,27 @@ final class InteriorAuthorityStore {
         UserDefaults.standard.removeObject(forKey: saveKey)
         projects = []
     }
+    
+    // MARK: - Project JSON Bridge (Path C)
+    
+    /// Replace all in-memory projects with the ones loaded from an external JSON file
+    /// (e.g. tudm_projects.json pulled from Working Copy / GitHub). Persists to UserDefaults.
+    func replaceProjects(with newProjects: [Project]) {
+        projects = newProjects
+        save()
+    }
+    
+    /// Merge imported projects into the current store. If a project shares the same UUID
+    /// as an existing one, the imported version replaces it. Otherwise it is appended.
+    /// This lets a user import a single wall/room/project without wiping their other work.
+    func mergeProjects(with imported: [Project]) {
+        for incoming in imported {
+            if let idx = projects.firstIndex(where: { $0.id == incoming.id }) {
+                projects[idx] = incoming
+            } else {
+                projects.append(incoming)
+            }
+        }
+        save()
+    }
 }

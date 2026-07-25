@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum InteriorRoute: Hashable {
     case project(UUID)
@@ -8,6 +9,14 @@ enum InteriorRoute: Hashable {
 struct InteriorAuthorityRootView: View {
     @Environment(InteriorAuthorityStore.self) private var store
     @State private var showingNewProject = false
+    @State private var showingProjectExporter = false
+    @State private var showingProjectImporter = false
+    @State private var pendingImportedProjects: [Project] = []
+    @State private var showingImportChoice = false
+    @State private var showingImportError = false
+    @State private var importErrorMessage = ""
+    @State private var showingExportResult = false
+    @State private var exportResultMessage = ""
     
     var body: some View {
         NavigationStack {
@@ -60,12 +69,100 @@ struct InteriorAuthorityRootView: View {
                         Label("New Project", systemImage: "plus")
                     }
                 }
+                ToolbarItem(placement: .secondaryAction) {
+                    Menu {
+                        Button {
+                            showingProjectExporter = true
+                        } label: {
+                            Label("Export Projects to JSON", systemImage: "square.and.arrow.up.on.square")
+                        }
+                        .disabled(store.projects.isEmpty)
+                        
+                        Button {
+                            showingProjectImporter = true
+                        } label: {
+                            Label("Import Projects from JSON", systemImage: "square.and.arrow.down.on.square")
+                        }
+                    } label: {
+                        Label("Git Bridge", systemImage: "externaldrive.badge.timemachine")
+                    }
+                }
             }
             .sheet(isPresented: $showingNewProject) {
                 ProjectFormView(mode: .create) { draft in
                     store.addProject(draft)
                 }
                 .interactiveDismissDisabled()
+            }
+            // Export to JSON (Files app picker — pick your Working Copy repo folder)
+            .fileExporter(
+                isPresented: $showingProjectExporter,
+                document: ProjectJSONDocument(projects: store.projects),
+                contentType: .json,
+                defaultFilename: ProjectJSONBridge.defaultFilename
+            ) { result in
+                switch result {
+                case .success(let url):
+                    exportResultMessage = "Saved to \(url.lastPathComponent). Commit and push from Working Copy so Perplexity can pull it."
+                    showingExportResult = true
+                case .failure(let error):
+                    exportResultMessage = "Export failed: \(error.localizedDescription)"
+                    showingExportResult = true
+                }
+            }
+            // Import from JSON (Files app picker — pick tudm_projects.json from your Working Copy repo folder)
+            .fileImporter(
+                isPresented: $showingProjectImporter,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    let didStart = url.startAccessingSecurityScopedResource()
+                    defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+                    do {
+                        let data = try Data(contentsOf: url)
+                        let projects = try ProjectJSONBridge.decode(data: data)
+                        pendingImportedProjects = projects
+                        showingImportChoice = true
+                    } catch {
+                        importErrorMessage = "Could not parse JSON: \(error.localizedDescription)"
+                        showingImportError = true
+                    }
+                case .failure(let error):
+                    importErrorMessage = "Import cancelled or failed: \(error.localizedDescription)"
+                    showingImportError = true
+                }
+            }
+            .confirmationDialog(
+                "Import Projects",
+                isPresented: $showingImportChoice,
+                titleVisibility: .visible
+            ) {
+                Button("Replace All (\(pendingImportedProjects.count) projects)", role: .destructive) {
+                    store.replaceProjects(with: pendingImportedProjects)
+                    pendingImportedProjects = []
+                }
+                Button("Merge (keep existing, upsert by ID)") {
+                    store.mergeProjects(with: pendingImportedProjects)
+                    pendingImportedProjects = []
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingImportedProjects = []
+                }
+            } message: {
+                Text("Replace will erase everything currently in the app and load only what is in the JSON. Merge upserts by UUID and keeps other work intact.")
+            }
+            .alert("Import Error", isPresented: $showingImportError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(importErrorMessage)
+            }
+            .alert("Export", isPresented: $showingExportResult) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(exportResultMessage)
             }
         }
     }
