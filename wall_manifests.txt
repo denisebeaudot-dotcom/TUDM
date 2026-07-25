@@ -1,0 +1,63 @@
+=== TUDM Wall Manifests ===
+Generated: 2026-07-25 15:36:45 -0400
+
+Project: Chelsea - Home
+  Room: Family Room
+    Room defaults: ceiling 96.00in, crown 0.00in, baseboard 7.00in, beam 8.00in at 88.00-96.00 AFF, columns 8.00w x 9.25d x 88.00h
+    Beams:
+      - Beam 1: B1, 88.00in tall, 8.00in thick, On Top of Columns
+    Wall: Wall 1
+      Total width: 246.00in
+      Chain: C SH C RZ WIN RZ C SH C
+      Vertical chain: CLG BM WS BB
+      Segments (left to right):
+        1. C1   Column    8.00w
+        2. SH1  Bookcase  43.00w   5 shelves, 9.25in deep, floor-to-ceiling
+        3. C2   Column    8.00w
+        4. RZ1  Return Zone 12.75w
+        5. WIN1 Window Unit 96.00w x 60.00h  sill 24.00 AFF  panels 3  style Picture
+        6. RZ2  Return Zone 12.75w
+        7. C3   Column    8.00w
+        8. SH2  Bookcase  39.50w   5 shelves, 9.25in deep, floor-to-ceiling
+        9. C4   Column    8.00w
+      Segment sum: 246.00in
+      Matches wall width: yes
+    Wall: Wall 2
+      Total width: 150.00in
+      Chain: C RZ DR WS C
+      Vertical chain: CLG BM WS BB
+      Segments (left to right):
+        1. C1   Column    9.25w
+        2. RZ1  Return Zone 7.50w
+        3. DR1  Door      30.00w x 76.00h  bottom 0.00 AFF  panels 1  style Picture  style Single
+        4. WS1  Wall Space 88.00w
+        5. C2   Column    9.25w
+      Segment sum: 150.00in
+      Matches wall width: yes
+    Wall: Wall 3
+      Total width: 246.00in
+      Chain: C WS C OP C WS C C WS
+      Vertical chain: CLG BM WS BB
+      Segments (left to right):
+        1. C1   Column    8.00w
+        2. WS1  Wall Space 39.50w
+        3. C2   Column    8.00w
+        4. OP1  Opening   48.00w x 80.00h  bottom 0.00 AFF  panels 1  style Picture
+        5. C3   Column    8.00w
+        6. WS2  Wall Space 73.00w
+        7. C4   Column    8.00w
+        8. C5   Column    8.00w
+        9. WS3  Wall Space 45.50w
+      Segment sum: 246.00in
+      Matches wall width: yes
+    Wall: Wall 3
+      Total width: 150.00in
+      Chain: WS C WS C
+      Vertical chain: CGL BM WS BB
+      Segments (left to right):
+        1. WS1  Wall Space 32.75w
+        2. C1   Column    8.00w
+        3. WS2  Wall Space 100.00w
+        4. C2   Column    9.25w
+      Segment sum: 150.00in
+      Matches wall width: yes
