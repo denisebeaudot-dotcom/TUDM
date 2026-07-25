@@ -199,6 +199,18 @@ struct WallFormView: View {
         hasSegments
     }
     
+    // MARK: - Validation (G2)
+    
+    /// All issues found against the current draft. Errors block Save; warnings only inform.
+    private var validationIssues: [ValidationIssue] {
+        let wallLabel = draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "This wall" : draft.name
+        return previewWall.validate(wallLabel: wallLabel, ceilingHeight: effectiveDefaults.ceilingHeight)
+    }
+    
+    private var blockingIssues: [ValidationIssue] {
+        validationIssues.filter { $0.isBlocking }
+    }
+    
     private var isEditingExistingWall: Bool {
         if case .edit = mode { return true }
         return false
@@ -267,6 +279,12 @@ struct WallFormView: View {
                     TextField("Notes", text: $draft.notes, axis: .vertical)
                         .focused($focusedField, equals: .notes)
                         .lineLimit(3...6)
+                }
+                
+                if !validationIssues.isEmpty {
+                    Section("Validation") {
+                        ValidationBanner(issues: validationIssues)
+                    }
                 }
                 
                 Section("Structure (Defaults)") {
@@ -524,6 +542,7 @@ struct WallFormView: View {
                             saveDraft()
                         }
                     }
+                    .disabled(!blockingIssues.isEmpty)
                 }
             }
             .sheet(item: $editingSegmentID) { segmentID in
