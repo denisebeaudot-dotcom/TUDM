@@ -2,8 +2,9 @@
   "sync": {
     "file_role": "wall",
     "status": "needs_measurement",
-    "edit_note": "Template. Nothing here is measured yet. Fill in expected_total_width and segments from a real measure, then set sync.status to \"ready\".",
+    "edit_note": "Template. Nothing here is measured yet. Fill in expected_total_width, segments, and sync.chain from a real measure, then set sync.status to \"ready\".",
     "floorplan_file": "floorplan_registry.json",
+    "chain": "",
     "next_structural_ids": {
       "column": "C5",
       "zone": "Z6",

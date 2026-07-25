@@ -62,6 +62,25 @@ An opening with casings consumes one zone number and expands into three segments
 `<id>A` left casing, `<id>B` unit, `<id>C` right casing. That is what keeps a clear wall
 return from being swallowed by the window.
 
+## Feeding the Swift chain entry screen
+
+A measured wall file carries `sync.chain`, written in exactly the notation the app's
+**Chain Entry / Editor** screen accepts, so the round trip is copy and paste:
+
+1. Copy `sync.chain` out of the wall file in Working Copy.
+2. In the app, open the room, tap **Chain Entry / Editor**, paste into the chain field,
+   tap **Parse Chain String**, then **Validate Chain**.
+3. Any ID that matches the Wall 1 source of truth comes back with its kind, label, and
+   notes attached rather than as a bare width.
+
+The chain string carries widths only. To carry a window's height and panel split across
+too, append them to that token — `Z3B=96in x 60in(22/52/22)` — which the parser also
+accepts. Widths accept carpentry fractions (`12 3/4`, `12-3/4`).
+
+Going the other direction, the payload shown by **Preview Payload** is the same shape as
+these files, so it can be pasted back over a wall file's body after an in-app
+correction. Keep the `sync` block when you do.
+
 ## Relationship to the push integration
 
 These files use the same field names as the push payload documented in
