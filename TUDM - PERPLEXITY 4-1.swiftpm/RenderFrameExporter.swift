@@ -34,15 +34,17 @@ enum RenderFrameExporter {
     static let bottomMarginFraction: Double = 0.18   // extra floor area for foreground moveables
     
     // Frame colors — high contrast structural solids on plaster background.
-    private static let plasterColor = Color(red: 0.96, green: 0.94, blue: 0.90) // limewash off-white
-    private static let columnColor  = Color(red: 0.12, green: 0.12, blue: 0.14) // near-black
-    private static let shelfWoodColor = Color(red: 0.32, green: 0.22, blue: 0.14) // dark aged oak
-    private static let casingColor = Color(red: 0.28, green: 0.20, blue: 0.14)
-    private static let muntinColor = Color(red: 0.24, green: 0.18, blue: 0.12)
-    private static let glassColor = Color(red: 0.76, green: 0.82, blue: 0.82) // muted sage-glass
-    private static let beamColor = Color(red: 0.20, green: 0.15, blue: 0.10) // dark oak beam
-    private static let baseboardColor = Color(red: 0.22, green: 0.16, blue: 0.11)
-    private static let crownColor = Color(red: 0.22, green: 0.16, blue: 0.11)
+    // Made internal (not private) so sibling views in this file (WallElevationFrameView, WallElevationMaskView)
+    // can read them under Swift Playgrounds' stricter access-level checks.
+    static let plasterColor = Color(red: 0.96, green: 0.94, blue: 0.90) // limewash off-white
+    static let columnColor  = Color(red: 0.12, green: 0.12, blue: 0.14) // near-black
+    static let shelfWoodColor = Color(red: 0.32, green: 0.22, blue: 0.14) // dark aged oak
+    static let casingColor = Color(red: 0.28, green: 0.20, blue: 0.14)
+    static let muntinColor = Color(red: 0.24, green: 0.18, blue: 0.12)
+    static let glassColor = Color(red: 0.76, green: 0.82, blue: 0.82) // muted sage-glass
+    static let beamColor = Color(red: 0.20, green: 0.15, blue: 0.10) // dark oak beam
+    static let baseboardColor = Color(red: 0.22, green: 0.16, blue: 0.11)
+    static let crownColor = Color(red: 0.22, green: 0.16, blue: 0.11)
     
     struct ExportBundle {
         let frameImage: UIImage
