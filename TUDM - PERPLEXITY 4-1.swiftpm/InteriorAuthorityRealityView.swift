@@ -23,7 +23,7 @@ enum WallCameraPreset: String, CaseIterable, Identifiable {
 }
 
 struct WallRealityPreview: View {
-    let wall: WallSpec
+    let wall: LockedWall
     let defaults: RoomDefaults
     
     @State private var preset: WallCameraPreset = .front
@@ -155,7 +155,7 @@ enum WallSceneBuilder {
     static let wallDepthInches: Double = 4.5
     static let columnProtrusionDefault: Double = 9.25
     
-    static func build(wall: WallSpec, defaults: RoomDefaults) -> Scene {
+    static func build(wall: LockedWall, defaults: RoomDefaults) -> Scene {
         let root = AnchorEntity(world: .zero)
         
         let plaster = plasterMaterial()
@@ -606,7 +606,7 @@ enum WallSceneBuilder {
     // MARK: - Auto beam over columns
     
     private static func addBeamOverColumns(root: Entity,
-                                           wall: WallSpec,
+                                           wall: LockedWall,
                                            ceilingH: Double,
                                            beamH: Double,
                                            colProtrusion: Double,

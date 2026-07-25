@@ -3,10 +3,10 @@ import SwiftUI
 // MARK: - Wall Elevation Layout
 
 struct WallElevationLayout {
-    let wall: WallSpec
+    let wall: LockedWall
     let defaults: RoomDefaults
     let verticalChain: String
-    let allWalls: [WallSpec]
+    let allWalls: [LockedWall]
     let roomBeams: [RoomBeam]
     
     var totalWidth: Double { max(1, wall.totalWidth) }
@@ -160,7 +160,7 @@ struct WallElevationLayout {
 // MARK: - Wall Elevation Builder
 
 enum WallElevationBuilder {
-    static func build(wall: WallSpec, defaults: RoomDefaults, verticalChain: String, allWalls: [WallSpec] = [], roomBeams: [RoomBeam] = []) -> WallElevationLayout {
+    static func build(wall: LockedWall, defaults: RoomDefaults, verticalChain: String, allWalls: [LockedWall] = [], roomBeams: [RoomBeam] = []) -> WallElevationLayout {
         WallElevationLayout(wall: wall, defaults: defaults, verticalChain: verticalChain, allWalls: allWalls, roomBeams: roomBeams)
     }
 }
@@ -838,10 +838,10 @@ struct WallElevationThumbnail: View {
     
     var body: some View {
         let layout = WallElevationBuilder.build(
-            wall: wall,
+            wall: wall.locked,
             defaults: defaults,
             verticalChain: verticalChain,
-            allWalls: allWalls,
+            allWalls: allWalls.map(\.locked),
             roomBeams: roomBeams
         )
         return WallElevationView(layout: layout, showsDimensions: false, showsLabels: false)

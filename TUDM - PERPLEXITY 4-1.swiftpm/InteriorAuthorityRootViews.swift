@@ -371,7 +371,7 @@ struct RoomDetailView: View {
     @State private var showingWorksheet = false
     @State private var showingNewBeam = false
     @State private var editingBeam: RoomBeam?
-    @State private var pushingWall: WallSpec?
+    @State private var pushingWall: LockedWall?
     @State private var showingChainEntry = false
     
     private var projectIndex: Int? {
@@ -500,7 +500,7 @@ struct RoomDetailView: View {
                     Section {
                         ForEach(room.wallSpecs) { wall in
                             Button {
-                                pushingWall = wall
+                                pushingWall = wall.locked
                             } label: {
                                 Label(
                                     wall.name.trimmed.isEmpty ? "Untitled wall" : wall.name,

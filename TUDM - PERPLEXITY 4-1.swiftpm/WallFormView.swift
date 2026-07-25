@@ -187,7 +187,7 @@ struct WallFormView: View {
     
     private var elevationLayout: WallElevationLayout {
         WallElevationBuilder.build(
-            wall: previewWall,
+            wall: previewWall.locked,
             defaults: effectiveDefaults,
             verticalChain: draft.verticalChainString
         )
@@ -438,7 +438,7 @@ struct WallFormView: View {
                     case .ortho:
                         ElevationPreviewCard(layout: elevationLayout)
                     case .threeD:
-                        WallRealityPreview(wall: previewWall, defaults: effectiveDefaults)
+                        WallRealityPreview(wall: previewWall.locked, defaults: effectiveDefaults)
                             .frame(minHeight: 320)
                             .background(Color(white: 0.95))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -863,10 +863,10 @@ struct WallFormView: View {
     // Exports FRAME + MASK to Photos, plus writes the prompt .md to a temp file for later sharing/copying.
     private func exportRenderFrameToPhotos() {
         let bundle = RenderFrameExporter.export(
-            wall: previewWall,
+            wall: previewWall.locked,
             defaults: effectiveDefaults,
             verticalChain: draft.verticalChainString,
-            allWalls: [previewWall],
+            allWalls: [previewWall.locked],
             roomBeams: []
         )
         // Keep prompt file URL around so the alert can offer Share Prompt / Copy Prompt Text.
@@ -890,10 +890,10 @@ struct WallFormView: View {
     // Exports FRAME + MASK + prompt to temp files and opens the iOS share sheet (fallback path).
     private func exportRenderFrameViaShare() {
         let bundle = RenderFrameExporter.export(
-            wall: previewWall,
+            wall: previewWall.locked,
             defaults: effectiveDefaults,
             verticalChain: draft.verticalChainString,
-            allWalls: [previewWall],
+            allWalls: [previewWall.locked],
             roomBeams: []
         )
         let urls = RenderFrameExporter.writeToTempFiles(bundle)

@@ -6,7 +6,7 @@ import Foundation
 /// Wall 1 source of truth (Z3A | Z3B | Z3C) and so a window's panel split sums to the
 /// window's own width rather than to the casing-inclusive segment width.
 enum WallRegistryBridge {
-    static func envelope(for wall: WallSpec, in room: Room, updatedAt: Date = Date()) -> WallRegistryEnvelope {
+    static func envelope(for wall: LockedWall, in room: Room, updatedAt: Date = Date()) -> WallRegistryEnvelope {
         let defaults = wall.usesOverrides ? (wall.overrides ?? room.defaults) : room.defaults
         let wallId = wall.name.trimmed
 
@@ -31,7 +31,7 @@ enum WallRegistryBridge {
 
     // MARK: - Segments
 
-    private static func segments(for wall: WallSpec, wallId: String) -> [WallRegistryEnvelope.WallSegment] {
+    private static func segments(for wall: LockedWall, wallId: String) -> [WallRegistryEnvelope.WallSegment] {
         wall.segments.enumerated().flatMap { (index, segment) -> [WallRegistryEnvelope.WallSegment] in
             // The app's `label` is the short structural ID ("C1"); its `note` is the description,
             // optionally followed by the finish and construction detail for that segment.
@@ -117,7 +117,7 @@ enum WallRegistryBridge {
 
     // MARK: - Vertical references
 
-    private static func verticalReferences(for wall: WallSpec, defaults: RoomDefaults) -> VerticalReferences {
+    private static func verticalReferences(for wall: LockedWall, defaults: RoomDefaults) -> VerticalReferences {
         let window = wall.segments.compactMap(\.opening).first { $0.category == .window }
         let beamBottom = BeamRangeAFFHelper.parseBottom(defaults.beamRangeAFF)
 
