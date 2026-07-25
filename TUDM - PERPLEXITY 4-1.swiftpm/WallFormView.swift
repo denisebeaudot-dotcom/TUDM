@@ -48,7 +48,12 @@ struct WallFormView: View {
     @State private var showingExportResultAlert: Bool = false
     @State private var exportResultTitle: String = ""
     @State private var exportResultMessage: String = ""
-    
+    @State private var unrecognizedChainTokens: [String] = []
+
+    /// Identity of the wall being edited, so the live preview positions room beams against the
+    /// same wall id the store holds instead of a throwaway one.
+    private let editingWallID: UUID?
+
     enum WallPreviewMode: String, CaseIterable, Identifiable {
         case ortho = "Ortho"
         case threeD = "3D"
@@ -71,12 +76,20 @@ struct WallFormView: View {
         case .create(_, _, let roomDefaults):
             var newDraft = WallDraft()
             newDraft.overrides = roomDefaults
+            editingWallID = nil
             _draft = State(initialValue: newDraft)
             _chainInput = State(initialValue: newDraft.chainString)
             _verticalChainInput = State(initialValue: newDraft.verticalChainString)
-            
+
         case .edit(_, _, let roomDefaults, let wall):
-            let seededDraft = WallDraft(wall: wall, roomDefaults: roomDefaults)
+            var seededDraft = WallDraft(wall: wall, roomDefaults: roomDefaults)
+            // A wall saved before segments existed (or imported chain-first) carries only a chain
+            // string. Materialize it up front so the row editor is never empty while the chain
+            // field shows content the user cannot reach.
+            if seededDraft.generatedSegments.isEmpty {
+                seededDraft.generatedSegments = seededDraft.resolvedSegments
+            }
+            editingWallID = wall.id
             _draft = State(initialValue: seededDraft)
             _chainInput = State(initialValue: seededDraft.chainString)
             _verticalChainInput = State(initialValue: seededDraft.verticalChainString)
@@ -159,6 +172,7 @@ struct WallFormView: View {
     
     private var previewWall: WallSpec {
         WallSpec(
+            id: editingWallID ?? UUID(),
             name: draft.name.isEmpty ? "Preview Wall" : draft.name,
             totalWidth: draft.totalWidth,
             ruleSet: draft.ruleSet,
@@ -309,6 +323,15 @@ struct WallFormView: View {
                         .buttonStyle(.bordered)
                     }
                     
+                    if !unrecognizedChainTokens.isEmpty {
+                        Label(
+                            "Not recognized: \(unrecognizedChainTokens.joined(separator: ", ")). These were skipped — use a legend token above.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    }
+
                     if !draft.chainString.isEmpty {
                         Text("Applied: \(draft.chainString)")
                             .font(.caption)
@@ -317,7 +340,7 @@ struct WallFormView: View {
                 } header: {
                     Text("Horizontal Chain")
                 } footer: {
-                    Text("Type shorthand and it auto-expands. d = DR, w = WIN, c = C, bc = BC, o = OP, fp = FP, n = NIC, s = SH, rz = RZ, ws = WS.")
+                    Text("Applying a chain rewrites the segment list below, keeping the widths and details you already entered for matching segment kinds. Type shorthand and it auto-expands: d = DR, w = W, wn = WIN, c = C, bc = BC, o = OP, s = SH, wr = RZ (wall return), ws = WS.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -367,7 +390,7 @@ struct WallFormView: View {
                 }
                 
                 Section {
-                    if draft.generatedSegments.isEmpty && draft.chainString.isEmpty {
+                    if draft.generatedSegments.isEmpty {
                         Text("No segments yet. Apply a chain, apply seed, or add manually.")
                             .foregroundStyle(.secondary)
                     } else {
@@ -376,15 +399,11 @@ struct WallFormView: View {
                         }
                         .onDelete { offsets in
                             draft.generatedSegments.remove(atOffsets: offsets)
-                            renumberColumns()
-                            draft.chainString = rebuildChainString()
-                            chainInput = draft.chainString
+                            syncChainFromSegments()
                         }
                         .onMove { source, destination in
                             draft.generatedSegments.move(fromOffsets: source, toOffset: destination)
-                            renumberColumns()
-                            draft.chainString = rebuildChainString()
-                            chainInput = draft.chainString
+                            syncChainFromSegments()
                         }
                     }
                     
@@ -444,8 +463,9 @@ struct WallFormView: View {
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: draft.generatedSegments.map { $0.kind }) { _, _ in
-                // When any segment's kind changes (via the detail sheet Picker), re-run column numbering.
-                renumberColumns()
+                // When any segment's kind changes (via the detail sheet Picker), re-run column
+                // numbering and refresh the shorthand so it keeps describing the real segments.
+                syncChainFromSegments()
             }
             .interactiveDismissDisabled(isCreateMode)
             .alert("Wall Name Required", isPresented: $showingNameRequiredAlert) {
@@ -622,9 +642,7 @@ struct WallFormView: View {
             Button(role: .destructive) {
                 if draft.generatedSegments.indices.contains(index) {
                     draft.generatedSegments.remove(at: index)
-                    renumberColumns()
-                    draft.chainString = rebuildChainString()
-                    chainInput = draft.chainString
+                    syncChainFromSegments()
                 }
             } label: {
                 Label("Delete", systemImage: "trash")
@@ -774,9 +792,7 @@ struct WallFormView: View {
         draft.generatedSegments.insert(newSegment, at: insertIndex)
         insertingAfterIndex = nil
         
-        renumberColumns()
-        draft.chainString = rebuildChainString()
-        chainInput = draft.chainString
+        syncChainFromSegments()
     }
     
     private func duplicateSegment(at index: Int) {
@@ -803,9 +819,7 @@ struct WallFormView: View {
         copy.archRise = source.archRise
         
         draft.generatedSegments.insert(copy, at: index + 1)
-        renumberColumns()
-        draft.chainString = rebuildChainString()
-        chainInput = draft.chainString
+        syncChainFromSegments()
     }
     
     private func defaultLabel(for kind: SegmentKind, index: Int) -> String {
@@ -889,54 +903,64 @@ struct WallFormView: View {
     
     // Assigns C1, C2, C3... to every .column segment in left-to-right order.
     // Non-column segments are ignored in the count. Preserves the segment's user-entered note.
-    private func renumberColumns() {
+    private func renumberedColumns(_ segments: [WallSegment]) -> [WallSegment] {
+        var result = segments
         var counter = 1
-        for i in draft.generatedSegments.indices {
-            if draft.generatedSegments[i].kind == .column {
-                draft.generatedSegments[i].label = "C\(counter)"
-                counter += 1
+        for i in result.indices where result[i].kind == .column {
+            result[i].label = "C\(counter)"
+            counter += 1
+        }
+        return result
+    }
+
+    /// Single place where segment edits are pushed back out to the shorthand. The segment list is
+    /// authoritative; the chain string and the chain text field are always rebuilt from it, so the
+    /// "Applied:" line can never describe something the row editor does not contain.
+    private func syncChainFromSegments() {
+        draft.generatedSegments = renumberedColumns(draft.generatedSegments)
+        draft.chainString = ChainTokenTable.chainString(for: draft.generatedSegments)
+        chainInput = draft.chainString
+        unrecognizedChainTokens = []
+    }
+
+    /// Rewrites the segment list from a chain while carrying over what the user already entered.
+    /// Each parsed token reuses the next unconsumed existing segment of the same kind, so widths,
+    /// opening details, and notes survive re-applying a chain. Only genuinely new segments are
+    /// seeded from the room/wall defaults.
+    private func reconciledSegments(parsed: [WallSegment], existing: [WallSegment]) -> [WallSegment] {
+        // Queued by chain token first (so a fireplace zone is not reused for a plain wall space),
+        // then by kind as a fallback for hand-labeled segments.
+        var available = existing
+        var result: [WallSegment] = []
+
+        for var fresh in parsed {
+            let token = ChainTokenTable.canonicalToken(for: fresh)
+            let matchIndex = available.firstIndex { ChainTokenTable.canonicalToken(for: $0) == token }
+                ?? available.firstIndex { $0.kind == fresh.kind }
+
+            if let matchIndex {
+                result.append(available.remove(at: matchIndex))
+            } else {
+                applyDefaults(to: &fresh)
+                result.append(fresh)
             }
         }
+        return result
     }
-    
-    private func rebuildChainString() -> String {
-        draft.generatedSegments.map { chainToken(for: $0.kind) }.joined(separator: " ")
-    }
-    
-    private func chainToken(for kind: SegmentKind) -> String {
-        switch kind {
-        case .wallSpace: return "WS"
-        case .wall: return "W"
-        case .column: return "C"
-        case .bookcase: return "SH"
-        case .shelf: return "SF"
-        case .windowUnit: return "WIN"
-        case .door: return "DR"
-        case .opening: return "OP"
-        case .beam: return "BM"
-        case .baseboard: return "BB"
-        case .crown: return "CR"
-        case .casing: return "CS"
-        case .trim: return "TR"
-        case .returnZone: return "RZ"
-        }
-    }
-    
+
     private func applyChain() {
         let normalized = cleanedChainInput
         guard !normalized.isEmpty else { return }
-        
-        draft.chainString = normalized
-        var parsed = WallSegment.parseChain(normalized)
-        for i in parsed.indices {
-            applyDefaults(to: &parsed[i])
-        }
-        draft.generatedSegments = parsed
-        renumberColumns()
-        chainInput = normalized
+
+        let parsed = WallSegment.parseChainDetailed(normalized)
+        let existing = draft.generatedSegments.isEmpty ? draft.resolvedSegments : draft.generatedSegments
+
+        draft.generatedSegments = reconciledSegments(parsed: parsed.segments, existing: existing)
+        syncChainFromSegments()
+        unrecognizedChainTokens = parsed.unrecognizedTokens
         focusedField = nil
     }
-    
+
     private func applyVerticalChain() {
         let normalized = cleanedVerticalChainInput
         guard !normalized.isEmpty else { return }
@@ -944,19 +968,16 @@ struct WallFormView: View {
         verticalChainInput = normalized
         focusedField = nil
     }
-    
+
     private func applySeed() {
-        let seedChain = "C SH C WS W WS C SH C"
-        chainInput = seedChain
-        draft.chainString = seedChain
         var segs = WallSegment.wallOneSeedSegments
         for i in segs.indices {
             applyDefaults(to: &segs[i])
         }
         draft.generatedSegments = segs
-        renumberColumns()
+        syncChainFromSegments()
     }
-    
+
     private func reapplyDefaultsToSegments() {
         // If the wall was loaded from a saved WallSpec, its segments live in
         // draft.resolvedSegments — not generatedSegments. Hoist them in first.
@@ -966,9 +987,7 @@ struct WallFormView: View {
         for i in draft.generatedSegments.indices {
             applyDefaults(to: &draft.generatedSegments[i])
         }
-        renumberColumns()
-        draft.chainString = rebuildChainString()
-        chainInput = draft.chainString
+        syncChainFromSegments()
     }
     
     private func applyDefaults(to segment: inout WallSegment) {
@@ -1063,20 +1082,53 @@ struct WallFormView: View {
         }
     }
     
-    private func saveDraft() {
-        if !cleanedChainInput.isEmpty && draft.generatedSegments.isEmpty {
-            applyChain()
+    /// Builds the draft that gets written to the store. Everything is computed into a local value
+    /// so the write never depends on reading `@State` back after mutating it in the same event.
+    private func draftForSave() -> WallDraft {
+        var outgoing = draft
+
+        // Honor a chain the user typed but never tapped Apply Chain on, reusing their existing
+        // segment data exactly as Apply Chain would.
+        let typedChain = cleanedChainInput
+        if !typedChain.isEmpty && typedChain != outgoing.chainString {
+            let parsed = WallSegment.parseChainDetailed(typedChain)
+            if !parsed.segments.isEmpty {
+                let existing = outgoing.generatedSegments.isEmpty
+                ? outgoing.resolvedSegments
+                : outgoing.generatedSegments
+                outgoing.generatedSegments = reconciledSegments(parsed: parsed.segments, existing: existing)
+            }
         }
-        
+
+        if outgoing.generatedSegments.isEmpty {
+            outgoing.generatedSegments = outgoing.resolvedSegments
+        }
+
+        outgoing.generatedSegments = renumberedColumns(outgoing.generatedSegments)
+
         if !cleanedVerticalChainInput.isEmpty {
-            draft.verticalChainString = cleanedVerticalChainInput
+            outgoing.verticalChainString = cleanedVerticalChainInput
         }
-        
-        if draft.generatedSegments.isEmpty {
-            draft.generatedSegments = draft.resolvedSegments
-        }
-        
-        onSave(draft)
+
+        // Segments are the source of truth, so the stored shorthand is derived from them.
+        outgoing.chainString = outgoing.generatedSegments.isEmpty
+        ? typedChain
+        : ChainTokenTable.chainString(for: outgoing.generatedSegments)
+
+        return outgoing
+    }
+
+    private func saveDraft() {
+        // Drop focus first so any width still being typed in a stepper field is committed.
+        focusedField = nil
+
+        let outgoing = draftForSave()
+        draft = outgoing
+        chainInput = outgoing.chainString
+        verticalChainInput = outgoing.verticalChainString
+        unrecognizedChainTokens = []
+
+        onSave(outgoing)
         dismiss()
     }
     
@@ -1111,31 +1163,6 @@ enum ChainShorthand {
         case vertical
     }
     
-    /// Horizontal shorthand → canonical token
-    private static let horizontalMap: [String: String] = [
-        "WS": "WS",
-        "W": "WS",
-        "C": "C",
-        "COL": "C",
-        "BC": "BC",
-        "BK": "BC",
-        "SH": "SH",
-        "S": "SH",
-        "WIN": "WIN",
-        "WN": "WIN",
-        "DR": "DR",
-        "D": "DR",
-        "DOOR": "DR",
-        "OP": "OP",
-        "O": "OP",
-        "FP": "FP",
-        "F": "FP",
-        "NIC": "NIC",
-        "N": "NIC",
-        "RZ": "RZ",
-        "R": "RZ"
-    ]
-    
     /// Vertical shorthand → canonical token
     private static let verticalMap: [String: String] = [
         "BB": "BB",
@@ -1164,14 +1191,19 @@ enum ChainShorthand {
     /// - Uppercases each token.
     /// - Expands to canonical token if in the shorthand map.
     /// - Preserves a trailing space so the user can keep typing without the cursor snapping.
+    ///
+    /// Horizontal tokens resolve through `ChainTokenTable`, the same vocabulary the parser and the
+    /// legend use, so anything the field accepts is something the parser can turn into a segment.
     static func normalize(_ raw: String, axis: Axis) -> String {
-        let map = (axis == .horizontal) ? horizontalMap : verticalMap
         let trailingSpace = raw.hasSuffix(" ")
         let unified = raw.replacingOccurrences(of: ",", with: " ")
         let parts = unified.split(separator: " ", omittingEmptySubsequences: true)
         let normalized = parts.map { part -> String in
             let up = part.uppercased()
-            return map[up] ?? up
+            switch axis {
+            case .horizontal: return ChainTokenTable.canonicalInput(up)
+            case .vertical: return verticalMap[up] ?? up
+            }
         }
         var out = normalized.joined(separator: " ")
         if trailingSpace && !out.isEmpty {
@@ -1193,18 +1225,17 @@ struct ArchitecturalLegendStrip: View {
         case vertical
     }
     
-    private static let horizontalEntries: [ArchitecturalLegendEntry] = [
-        .init(token: "BC",  name: "Bookcase",    definition: "Built-in bookcase or cabinetry.", axis: .horizontal),
-        .init(token: "C",   name: "Column",      definition: "Vertical structural column.", axis: .horizontal),
-        .init(token: "DR",  name: "Door",        definition: "Door opening.", axis: .horizontal),
-        .init(token: "FP",  name: "Fireplace",   definition: "Fireplace, mantel, or surround.", axis: .horizontal),
-        .init(token: "NIC", name: "Niche",       definition: "Recessed wall niche or alcove.", axis: .horizontal),
-        .init(token: "OP",  name: "Opening",     definition: "Cased opening, no door.", axis: .horizontal),
-        .init(token: "RZ",  name: "Return Zone", definition: "Inside corner or return.", axis: .horizontal),
-        .init(token: "SH",  name: "Shelf",       definition: "Shelving unit.", axis: .horizontal),
-        .init(token: "WIN", name: "Window",      definition: "Window opening.", axis: .horizontal),
-        .init(token: "WS",  name: "Wall Space",  definition: "Blank drywall run between elements.", axis: .horizontal)
-    ]
+    // Derived from ChainTokenTable so every chip inserts a token the chain parser understands.
+    private static let horizontalEntries: [ArchitecturalLegendEntry] = ChainTokenTable.legendTokens
+        .sorted { $0.canonical < $1.canonical }
+        .map { token in
+            ArchitecturalLegendEntry(
+                token: token.canonical,
+                name: token.name,
+                definition: token.definition,
+                axis: .horizontal
+            )
+        }
     
     private static let verticalEntries: [ArchitecturalLegendEntry] = [
         .init(token: "BB",  name: "Baseboard",   definition: "Floor-line trim band.", axis: .vertical),
@@ -1290,6 +1321,7 @@ struct ArchitecturalLegendStrip: View {
     private func tokenColor(for token: String) -> Color {
         switch token {
         case "WS":  return .gray
+        case "W":   return .gray
         case "C":   return .blue
         case "BC":  return .brown
         case "SH":  return .brown
@@ -1355,10 +1387,16 @@ struct InlineStepperRow: View {
                 .onChange(of: value) { _, _ in
                     if !isFocused { syncFromValue() }
                 }
+                .onChange(of: textValue) { _, _ in
+                    // Push each keystroke through immediately. Waiting for focus loss meant a width
+                    // typed here was still uncommitted when the user tapped Update, so the edit was
+                    // silently thrown away.
+                    commitTextLive()
+                }
                 .onChange(of: isFocused) { _, focused in
                     if !focused { commitText() }
                 }
-            
+
             Button {
                 commitText()
                 value = min(maximum, value + step)
@@ -1376,16 +1414,20 @@ struct InlineStepperRow: View {
     private func syncFromValue() {
         textValue = String(format: "%.2f", value)
     }
-    
-    private func commitText() {
+
+    /// Commits without reformatting, so the field does not fight the user mid-typing.
+    private func commitTextLive() {
         let cleaned = textValue
             .replacingOccurrences(of: ",", with: ".")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if let parsed = Double(cleaned) {
             value = min(maximum, max(minimum, parsed))
         }
-        
+    }
+
+    private func commitText() {
+        commitTextLive()
         syncFromValue()
     }
 }

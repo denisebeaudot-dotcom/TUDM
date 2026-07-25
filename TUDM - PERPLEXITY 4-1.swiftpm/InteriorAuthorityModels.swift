@@ -73,10 +73,16 @@ struct WallSpec: Identifiable, Codable, Hashable {
     var ruleSet: String
     var notes: String
     
+    /// Shorthand *derived from* `segments`. Rebuilt on every save via
+    /// `ChainTokenTable.chainString(for:)`, so it can never describe a wall the segments do not.
+    /// Treat it as display/entry sugar, never as input to rendering.
     var chainString: String
     var verticalChainString: String
+
+    /// The authoritative wall description. Elevations, the 3D preview, the worksheet, the manifest,
+    /// and the Perplexity registry payload are all built from this list.
     var segments: [WallSegment]
-    
+
     var usesOverrides: Bool
     var overrides: RoomDefaults?
     
@@ -716,162 +722,245 @@ struct WallSegment: Identifiable, Codable, Hashable {
         WallSegment(label: "C4", width: 12, kind: .column, note: "Right column")
     ]
     
+    /// Parses horizontal chain shorthand into segments.
+    ///
+    /// `WallSpec.segments` is the authoritative description of a wall; a chain string is only
+    /// shorthand for producing or re-describing those segments. Use `parseChainDetailed` when
+    /// the caller needs to tell the user about tokens that could not be understood.
     static func parseChain(_ chain: String) -> [WallSegment] {
+        parseChainDetailed(chain).segments
+    }
+
+    struct ChainParseResult {
+        var segments: [WallSegment]
+        var unrecognizedTokens: [String]
+    }
+
+    /// Parses every token in `chain` through `ChainTokenTable`, collecting anything it cannot
+    /// resolve. Nothing is dropped without being reported, so a chain and the segments it
+    /// produced can never silently disagree.
+    static func parseChainDetailed(_ chain: String) -> ChainParseResult {
         let tokens = chain
             .uppercased()
             .split(whereSeparator: \.isWhitespace)
             .map(String.init)
-        
+
         var counts: [String: Int] = [:]
-        
-        func nextLabel(_ prefix: String) -> String {
-            counts[prefix, default: 0] += 1
-            return "\(prefix)\(counts[prefix]!)"
+        var segments: [WallSegment] = []
+        var unrecognized: [String] = []
+
+        for raw in tokens {
+            guard let token = ChainTokenTable.token(forInput: raw) else {
+                if !unrecognized.contains(raw) { unrecognized.append(raw) }
+                continue
+            }
+            counts[token.canonical, default: 0] += 1
+            let label = "\(token.canonical)\(counts[token.canonical]!)"
+            segments.append(chainSegment(for: token, label: label))
         }
-        
-        return tokens.compactMap { token in
-            switch token {
-            case "C":
-                return WallSegment(
-                    label: nextLabel("C"),
-                    width: 12,
-                    kind: .column,
-                    note: "Chain column"
-                )
-                
-            case "SH":
-                return WallSegment(
-                    label: nextLabel("SH"),
-                    width: 24,
-                    kind: .bookcase,
-                    note: "Chain shelf",
-                    shelfCount: 5,
-                    shelfDepth: 12,
-                    isFloorToCeiling: true
-                )
-                
-            case "WS":
-                return WallSegment(
-                    label: nextLabel("WS"),
-                    width: 18,
-                    kind: .wallSpace,
-                    note: "Chain wall space"
-                )
-                
-            case "W":
-                return WallSegment(
-                    label: nextLabel("W"),
-                    width: 24,
-                    kind: .wall,
-                    note: "Chain wall"
-                )
-                
-            case "WIN":
-                return WallSegment(
-                    label: nextLabel("WIN"),
-                    width: 0,
-                    kind: .windowUnit,
-                    note: "Chain window",
-                    opening: OpeningSpec(
-                        category: .window,
-                        windowStyle: .picture,
-                        openingWidth: 48,
-                        openingHeight: 48,
-                        sillOrBottomAFF: 24,
-                        wallSpaceAboveUnit: 6,
-                        panelCount: 1
-                    )
-                )
-                
-            case "DR", "D":
-                return WallSegment(
-                    label: nextLabel("DR"),
-                    width: 0,
-                    kind: .door,
-                    note: "Chain door",
-                    opening: OpeningSpec(
-                        category: .door,
-                        windowStyle: nil,
-                        doorStyle: .single,
-                        openingWidth: 36,
-                        openingHeight: 80,
-                        sillOrBottomAFF: 0,
-                        panelCount: 1,
-                        handing: .left
-                    )
-                )
-                
-            case "OP", "O":
-                return WallSegment(
-                    label: nextLabel("OP"),
-                    width: 0,
-                    kind: .opening,
-                    note: "Generic opening",
-                    opening: OpeningSpec(
-                        category: .generic,
-                        windowStyle: nil,
-                        doorStyle: nil,
-                        openingWidth: 36,
-                        openingHeight: 80,
-                        sillOrBottomAFF: 0,
-                        casingLeft: 0,
-                        casingRight: 0,
-                        casingHead: 0
-                    )
-                )
-                
-            case "BM", "B":
-                return WallSegment(
-                    label: nextLabel("BM"),
-                    width: 24,
-                    kind: .beam,
-                    note: "Beam zone",
-                    beamPosition: .onTopOfColumns
-                )
-                
-            case "BB":
-                return WallSegment(
-                    label: nextLabel("BB"),
-                    width: 4,
-                    kind: .baseboard,
-                    note: "Baseboard"
-                )
-                
-            case "CR":
-                return WallSegment(
-                    label: nextLabel("CR"),
-                    width: 4,
-                    kind: .crown,
-                    note: "Crown"
-                )
-                
-            case "CS":
-                return WallSegment(
-                    label: nextLabel("CS"),
-                    width: 4,
-                    kind: .casing,
-                    note: "Casing"
-                )
-                
-            case "TR":
-                return WallSegment(
-                    label: nextLabel("TR"),
-                    width: 4,
-                    kind: .trim,
-                    note: "Trim"
-                )
-                
-            case "RZ":
-                return WallSegment(
-                    label: nextLabel("RZ"),
-                    width: 24,
-                    kind: .returnZone,
-                    note: "Return zone"
-                )
-                
-            default:
-                return nil
+
+        return ChainParseResult(segments: segments, unrecognizedTokens: unrecognized)
+    }
+
+    /// Builds the default segment for a chain token, including the opening spec that
+    /// window / door / cased-opening tokens need.
+    static func chainSegment(for token: ChainTokenTable.Token, label: String) -> WallSegment {
+        var segment = WallSegment(
+            label: label,
+            width: token.defaultWidth,
+            kind: token.kind,
+            note: token.note
+        )
+
+        switch token.kind {
+        case .bookcase:
+            segment.shelfCount = 5
+            segment.shelfDepth = 12
+            segment.isFloorToCeiling = true
+
+        case .shelf:
+            segment.shelfCount = 1
+            segment.shelfDepth = 10
+            segment.shelfThickness = 1.5
+            segment.shelfSpacedEvenly = true
+
+        case .beam:
+            segment.beamPosition = .onTopOfColumns
+
+        case .windowUnit:
+            // Openings carry their width in the opening spec; `resolvedWidth` adds the casing.
+            segment.width = 0
+            segment.opening = OpeningSpec(
+                category: .window,
+                windowStyle: .picture,
+                openingWidth: 48,
+                openingHeight: 48,
+                sillOrBottomAFF: 24,
+                wallSpaceAboveUnit: 6,
+                panelCount: 1
+            )
+
+        case .door:
+            segment.width = 0
+            segment.opening = OpeningSpec(
+                category: .door,
+                windowStyle: nil,
+                doorStyle: .single,
+                openingWidth: 36,
+                openingHeight: 80,
+                sillOrBottomAFF: 0,
+                panelCount: 1,
+                handing: .left
+            )
+
+        case .opening:
+            segment.width = 0
+            segment.opening = OpeningSpec(
+                category: .generic,
+                windowStyle: nil,
+                doorStyle: nil,
+                openingWidth: 36,
+                openingHeight: 80,
+                sillOrBottomAFF: 0,
+                casingLeft: 0,
+                casingRight: 0,
+                casingHead: 0
+            )
+
+        default:
+            break
+        }
+
+        return segment
+    }
+}
+
+// MARK: - Chain Token Table
+
+/// The single vocabulary shared by the chain text field, the tap-to-insert legend, the chain
+/// parser, and the shorthand rebuilt from segments. Adding a token here is enough to make it
+/// typeable, insertable, parseable, and round-trippable.
+///
+/// A wall's authoritative data is `WallSpec.segments`. `WallSpec.chainString` is a derived
+/// shorthand that is rebuilt from those segments whenever a wall is saved.
+enum ChainTokenTable {
+    struct Token: Identifiable, Hashable {
+        let canonical: String
+        let name: String
+        let definition: String
+        let kind: SegmentKind
+        let defaultWidth: Double
+        let note: String
+        /// Extra spellings accepted from the keyboard, normalized to `canonical`.
+        let aliases: [String]
+        /// Whether the token gets a chip in the horizontal legend strip.
+        let showsInLegend: Bool
+
+        var id: String { canonical }
+    }
+
+    /// Order matters: the first token listed for a `SegmentKind` is the one used when a chain
+    /// string is rebuilt from segments.
+    static let horizontal: [Token] = [
+        Token(canonical: "C", name: "Column", definition: "Vertical structural column.",
+              kind: .column, defaultWidth: 12, note: "Chain column",
+              aliases: ["COL"], showsInLegend: true),
+        Token(canonical: "SH", name: "Shelf Bay", definition: "Built-in shelving / bookcase bay.",
+              kind: .bookcase, defaultWidth: 24, note: "Chain shelf",
+              aliases: ["S"], showsInLegend: true),
+        Token(canonical: "BC", name: "Bookcase", definition: "Built-in bookcase or cabinetry.",
+              kind: .bookcase, defaultWidth: 36, note: "Chain bookcase",
+              aliases: ["BK"], showsInLegend: true),
+        Token(canonical: "SF", name: "Open Shelf", definition: "Single open shelf plank.",
+              kind: .shelf, defaultWidth: 24, note: "Chain open shelf",
+              aliases: [], showsInLegend: false),
+        Token(canonical: "WS", name: "Wall Space", definition: "Blank drywall run between elements.",
+              kind: .wallSpace, defaultWidth: 18, note: "Chain wall space",
+              aliases: [], showsInLegend: true),
+        Token(canonical: "RZ", name: "Wall Return", definition: "Clear wall return beside an opening. Stays its own zone and is never absorbed into the opening.",
+              kind: .returnZone, defaultWidth: 24, note: "Clear wall return - must remain separate from the adjacent opening",
+              aliases: ["WR", "RET", "R", "WRET"], showsInLegend: true),
+        // FP and NIC have no dedicated SegmentKind yet, so they are wall-space zones carrying their
+        // own label. That keeps the zone and its width in the wall instead of dropping it, and the
+        // label prefix lets the chain string round-trip as FP / NIC.
+        Token(canonical: "FP", name: "Fireplace", definition: "Fireplace, mantel, or surround. Held as its own wall zone.",
+              kind: .wallSpace, defaultWidth: 48, note: "Fireplace zone",
+              aliases: ["F"], showsInLegend: true),
+        Token(canonical: "NIC", name: "Niche", definition: "Recessed wall niche or alcove. Held as its own wall zone.",
+              kind: .wallSpace, defaultWidth: 24, note: "Niche zone",
+              aliases: ["N"], showsInLegend: true),
+        Token(canonical: "W", name: "Wall", definition: "Full wall run or partition.",
+              kind: .wall, defaultWidth: 24, note: "Chain wall",
+              aliases: [], showsInLegend: true),
+        Token(canonical: "WIN", name: "Window", definition: "Window opening.",
+              kind: .windowUnit, defaultWidth: 0, note: "Chain window",
+              aliases: ["WN"], showsInLegend: true),
+        Token(canonical: "DR", name: "Door", definition: "Door opening.",
+              kind: .door, defaultWidth: 0, note: "Chain door",
+              aliases: ["D", "DOOR"], showsInLegend: true),
+        Token(canonical: "OP", name: "Opening", definition: "Cased opening, no door.",
+              kind: .opening, defaultWidth: 0, note: "Generic opening",
+              aliases: ["O"], showsInLegend: true),
+        Token(canonical: "BM", name: "Beam Zone", definition: "Horizontal beam zone on this wall.",
+              kind: .beam, defaultWidth: 24, note: "Beam zone",
+              aliases: ["B", "BEAM"], showsInLegend: false),
+        Token(canonical: "BB", name: "Baseboard", definition: "Baseboard run.",
+              kind: .baseboard, defaultWidth: 4, note: "Baseboard",
+              aliases: [], showsInLegend: false),
+        Token(canonical: "CR", name: "Crown", definition: "Crown molding run.",
+              kind: .crown, defaultWidth: 4, note: "Crown",
+              aliases: [], showsInLegend: false),
+        Token(canonical: "CS", name: "Casing", definition: "Casing / trim beside an opening.",
+              kind: .casing, defaultWidth: 4, note: "Casing",
+              aliases: [], showsInLegend: false),
+        Token(canonical: "TR", name: "Trim", definition: "Miscellaneous trim run.",
+              kind: .trim, defaultWidth: 4, note: "Trim",
+              aliases: [], showsInLegend: false)
+    ]
+
+    static let legendTokens: [Token] = horizontal.filter(\.showsInLegend)
+
+    private static let lookup: [String: Token] = {
+        var map: [String: Token] = [:]
+        for token in horizontal {
+            map[token.canonical] = token
+            for alias in token.aliases where map[alias] == nil {
+                map[alias] = token
             }
         }
+        return map
+    }()
+
+    /// Resolves raw keyboard input (canonical token or alias) to a token.
+    static func token(forInput raw: String) -> Token? {
+        lookup[raw.trimmingCharacters(in: .whitespaces).uppercased()]
+    }
+
+    /// The canonical spelling for raw input, or the uppercased input when unrecognized so the
+    /// user can still see and correct what they typed.
+    static func canonicalInput(_ raw: String) -> String {
+        let cleaned = raw.trimmingCharacters(in: .whitespaces).uppercased()
+        return lookup[cleaned]?.canonical ?? cleaned
+    }
+
+    /// The token used when rebuilding a chain string from a segment. Prefers a token whose
+    /// canonical spelling already prefixes the segment label, so a bookcase entered as `BC`
+    /// round-trips as `BC` rather than collapsing to `SH`.
+    static func canonicalToken(for segment: WallSegment) -> String {
+        let candidates = horizontal.filter { $0.kind == segment.kind }
+        let label = segment.label.uppercased()
+        if let exact = candidates.first(where: { label.hasPrefix($0.canonical) }) {
+            return exact.canonical
+        }
+        return candidates.first?.canonical ?? ""
+    }
+
+    /// Rebuilds the shorthand for a full segment list. This is the only direction of truth:
+    /// segments produce the chain string, never the reverse.
+    static func chainString(for segments: [WallSegment]) -> String {
+        segments
+            .map { canonicalToken(for: $0) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 }
