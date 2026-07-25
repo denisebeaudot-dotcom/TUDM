@@ -21,6 +21,7 @@ struct InteriorAuthorityRootView: View {
     @State private var showingSyncFolderPicker = false
     @State private var showingSyncFolderError = false
     @State private var syncFolderErrorMessage = ""
+    @State private var showingAdvancedSync = false
     
     var body: some View {
         NavigationStack {
@@ -55,11 +56,9 @@ struct InteriorAuthorityRootView: View {
                         } label: {
                             Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
                         }
-                        Button(role: .destructive) {
-                            syncFolder.clearFolder()
-                        } label: {
-                            Label("Clear Sync Folder", systemImage: "xmark.circle")
-                        }
+                        Text("Sync only writes \(ManifestTxtWriter.filename) into the folder. It never deletes or clears your projects, rooms, walls, or anything already in the folder.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     } else {
                         Text("Pick a Files folder (your Working Copy TUDM repo) and the app will auto-write wall_manifests.txt every time you save.")
                             .font(.footnote)
@@ -134,6 +133,15 @@ struct InteriorAuthorityRootView: View {
                         } label: {
                             Label("Import Projects from JSON", systemImage: "square.and.arrow.down.on.square")
                         }
+
+                        Divider()
+
+                        Button {
+                            showingAdvancedSync = true
+                        } label: {
+                            Label("Advanced Sync Settings", systemImage: "wrench.and.screwdriver")
+                        }
+                        .disabled(syncFolder.displayPath == nil)
                     } label: {
                         Label("Git Bridge", systemImage: "externaldrive.badge.timemachine")
                     }
@@ -241,6 +249,9 @@ struct InteriorAuthorityRootView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(syncFolderErrorMessage)
+            }
+            .sheet(isPresented: $showingAdvancedSync) {
+                AdvancedSyncSettingsView()
             }
         }
     }

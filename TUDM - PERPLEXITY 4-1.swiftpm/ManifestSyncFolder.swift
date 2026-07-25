@@ -53,6 +53,9 @@ final class ManifestSyncFolder {
         self.displayPath = url.path
     }
     
+    /// Forgets the bookmarked folder so syncing stops. Deletes no files and no project
+    /// data — only the stored bookmark and last-write metadata. Reached from
+    /// Advanced Sync Settings behind a typed confirmation, never from the main screen.
     func clearFolder() {
         UserDefaults.standard.removeObject(forKey: Self.bookmarkKey)
         UserDefaults.standard.removeObject(forKey: Self.displayPathKey)

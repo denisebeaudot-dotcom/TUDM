@@ -45,6 +45,24 @@ The hand-edited sync files live in `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySy
 per wall plus a floorplan index, kept there so they are the first thing visible when the
 repo is opened in Working Copy. See `TUDM - PERPLEXITY 4-1.swiftpm/WallRegistrySync/README.md`.
 
+## Manifest sync never deletes anything
+
+**Sync is additive. It writes, it does not clear.** `Sync Now` on the Projects screen
+writes `wall_manifests.txt` into the folder you picked. It does not delete projects,
+rooms, walls, or any other file in that folder.
+
+The only action that undoes sync setup is **Disconnect Sync Folder**, and it merely
+makes the app forget the folder bookmark — no files are removed and no measurements
+are lost. Because it is easy to tap by accident and easy to misread as a data wipe, it
+is deliberately not on the main screen. To reach it:
+
+1. Projects screen -> **Git Bridge** menu -> **Advanced Sync Settings**
+2. Turn on **Show folder link removal**
+3. Type `DELETE` in the confirmation field to enable the button
+4. Confirm the **Disconnect and Stop Syncing** dialog
+
+Reconnecting is just **Set Sync Folder** again, which immediately rewrites the manifest.
+
 ## Wall 1 source of truth
 
 ```text
