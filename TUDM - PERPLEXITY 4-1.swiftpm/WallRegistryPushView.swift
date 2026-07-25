@@ -14,6 +14,7 @@ struct WallRegistryPushView: View {
     @State private var response: WallRegistryPushResponse?
     @State private var isPushing = false
     @State private var showingJSON = false
+    @State private var showingChainEditor = false
 
     private var envelope: WallRegistryEnvelope {
         WallRegistryBridge.envelope(for: wall, in: room)
@@ -23,37 +24,24 @@ struct WallRegistryPushView: View {
         NavigationStack {
             Form {
                 sourceOfTruthSection
-                backendSection
+                WallRegistryBackendSection(settings: settings)
                 actionsSection
 
                 if let response {
-                    resultSection(response)
+                    WallRegistryResultSection(response: response)
                 }
             }
             .navigationTitle("Wall Registry Push")
-            .onChange(of: settings.endpointString) { settings.save() }
-            .onChange(of: settings.pushToken) { settings.save() }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
             .sheet(isPresented: $showingJSON) {
-                NavigationStack {
-                    ScrollView {
-                        Text(jsonPreview)
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                    }
-                    .navigationTitle("Payload")
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Close") { showingJSON = false }
-                        }
-                    }
-                }
+                WallRegistryPayloadPreview(envelope: envelope) { showingJSON = false }
+            }
+            .sheet(isPresented: $showingChainEditor) {
+                WallRegistryChainEntryView(draft: WallRegistryChainDraft(envelope: envelope))
             }
         }
     }
@@ -61,7 +49,7 @@ struct WallRegistryPushView: View {
     // MARK: - Sections
 
     private var sourceOfTruthSection: some View {
-        Section("Current Source of Truth") {
+        Section {
             let current = envelope
             LabeledContent("Room", value: current.roomId.isEmpty ? "—" : current.roomId)
             LabeledContent("Wall", value: current.wallId.isEmpty ? "—" : current.wallId)
@@ -78,24 +66,10 @@ struct WallRegistryPushView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 2)
-        }
-    }
-
-    private var backendSection: some View {
-        Section {
-            TextField("https://your-backend.example.com/wall-registry", text: $settings.endpointString)
-                .textContentType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-
-            SecureField("X-Wall-Push-Token (optional)", text: $settings.pushToken)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
         } header: {
-            Text("Backend Proxy")
+            Text("Current Source of Truth")
         } footer: {
-            Text("The endpoint and token are stored on this device only, never in Git. The Perplexity API key lives solely in the backend's environment — this app never holds it.")
+            WallRegistryLockedRulesFooter()
         }
     }
 
@@ -125,6 +99,12 @@ struct WallRegistryPushView: View {
             } label: {
                 Label("Preview Payload", systemImage: "curlybraces")
             }
+
+            Button {
+                showingChainEditor = true
+            } label: {
+                Label("Edit Chain by Hand…", systemImage: "list.number")
+            }
         } footer: {
             if let validationError {
                 Text(validationError)
@@ -141,39 +121,7 @@ struct WallRegistryPushView: View {
         }
     }
 
-    private func resultSection(_ response: WallRegistryPushResponse) -> some View {
-        Section("Last Push") {
-            Text(response.message)
-            if let totalWidth = response.totalWidth {
-                LabeledContent("Stored Total", value: WallRegistryEnvelope.trimmedNumber(totalWidth))
-            }
-            if let receivedAt = response.receivedAt {
-                LabeledContent("Received", value: receivedAt.formatted(date: .abbreviated, time: .standard))
-            }
-            if let nextAction = response.nextAction, !nextAction.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Next Action")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                    Text(nextAction)
-                        .font(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-
     // MARK: - Actions
-
-    private var jsonPreview: String {
-        guard
-            let data = try? WallRegistryPushClient.makeEncoder().encode(envelope),
-            let text = String(data: data, encoding: .utf8)
-        else {
-            return "Unable to encode this registry."
-        }
-        return text
-    }
 
     private func validate() {
         didValidate = true

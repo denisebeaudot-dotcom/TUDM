@@ -361,6 +361,7 @@ struct RoomDetailView: View {
     @State private var showingNewBeam = false
     @State private var editingBeam: RoomBeam?
     @State private var pushingWall: WallSpec?
+    @State private var showingChainEntry = false
     
     private var projectIndex: Int? {
         store.projects.firstIndex(where: { $0.id == projectID })
@@ -485,23 +486,27 @@ struct RoomDetailView: View {
                         }
                     }
                     
-                    if !room.wallSpecs.isEmpty {
-                        Section {
-                            ForEach(room.wallSpecs) { wall in
-                                Button {
-                                    pushingWall = wall
-                                } label: {
-                                    Label(
-                                        wall.name.trimmed.isEmpty ? "Untitled wall" : wall.name,
-                                        systemImage: "paperplane"
-                                    )
-                                }
+                    Section {
+                        ForEach(room.wallSpecs) { wall in
+                            Button {
+                                pushingWall = wall
+                            } label: {
+                                Label(
+                                    wall.name.trimmed.isEmpty ? "Untitled wall" : wall.name,
+                                    systemImage: "paperplane"
+                                )
                             }
-                        } header: {
-                            Text("Perplexity Wall Registry")
-                        } footer: {
-                            Text("Validate a wall's measured chain and push it to your backend proxy as the render source of truth.")
                         }
+
+                        Button {
+                            showingChainEntry = true
+                        } label: {
+                            Label("Chain Entry / Editor", systemImage: "list.number")
+                        }
+                    } header: {
+                        Text("Perplexity Wall Registry")
+                    } footer: {
+                        Text("Validate a wall's measured chain and push it to your backend proxy as the render source of truth. Chain Entry / Editor lets you type or paste a chain by hand, starting from the Wall 1 template.")
                     }
                     
                     Section("Room Beams") {
@@ -599,6 +604,9 @@ struct RoomDetailView: View {
                 .sheet(item: $pushingWall) { wall in
                     WallRegistryPushView(wall: wall, room: room)
                 }
+                .sheet(isPresented: $showingChainEntry) {
+                    WallRegistryChainEntryView(draft: chainEntryDraft(for: room))
+                }
                 .sheet(isPresented: $showingNewBeam) {
                     BeamFormView(
                         mode: .create,
@@ -623,6 +631,13 @@ struct RoomDetailView: View {
         }
     }
     
+    /// Wall 1 stays the starter template; only the room ID is pre-filled from this room.
+    private func chainEntryDraft(for room: Room) -> WallRegistryChainDraft {
+        var draft = WallRegistryChainDraft.wall1Template()
+        draft.roomId = WallRegistryBridge.slug(room.name)
+        return draft
+    }
+
     @ViewBuilder
     private func beamRow(beam: RoomBeam, walls: [WallSpec]) -> some View {
         let refs = BeamColumnRef.gather(from: walls)

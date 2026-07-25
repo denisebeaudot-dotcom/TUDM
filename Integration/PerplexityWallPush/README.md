@@ -16,7 +16,7 @@ TUDM app on iPad
 ## Where things live
 
 The app is a Swift Playgrounds package, so all Swift files sit flat inside
-`TUDM - PERPLEXITY 4-1.swiftpm/`. Five files were added:
+`TUDM - PERPLEXITY 4-1.swiftpm/` and no target membership has to be set by hand:
 
 | File | Purpose |
 | --- | --- |
@@ -24,7 +24,19 @@ The app is a Swift Playgrounds package, so all Swift files sit flat inside
 | `WallRegistryPushClient.swift` | `WallRegistryPushClient` (POST), `WallRegistryPushSettings` (endpoint + token), response and error types |
 | `WallRegistryWall1Example.swift` | Corrected Wall 1 source of truth, in code |
 | `WallRegistryBridge.swift` | Converts the app's own `WallSpec` / `Room` into a registry envelope |
-| `WallRegistryPushView.swift` | "Validate Wall" and "Send to Perplexity" screen |
+| `WallRegistryPushView.swift` | "Validate Wall" and "Send to Perplexity" screen for an existing wall |
+| `WallRegistryChainParser.swift` | Parses a pasted chain string (`C1=8in \| Z1=43in \| …`) into segments |
+| `WallRegistryChainDraft.swift` | Editable text-first draft of an envelope, plus all-at-once validation |
+| `WallRegistryChainEntryView.swift` | Chain entry / editing screen — rows, paste-import, validate, preview, push |
+| `WallRegistryPushSections.swift` | Backend-proxy section, last-push section, payload preview, locked-rules footer, shared by both screens |
+
+Where the chain entry screen is wired in:
+
+- `InteriorAuthorityRootViews.swift`, `RoomDetailView` — the **Perplexity Wall Registry**
+  section has a **Chain Entry / Editor** row that opens it seeded with the Wall 1
+  template and this room's ID.
+- `WallRegistryPushView.swift` — **Edit Chain by Hand…** opens it seeded from the wall
+  currently being pushed.
 
 Backend, schema, and JSON reference live here in `Integration/PerplexityWallPush/`
 so nothing non-Swift is dragged into the app target.
@@ -101,6 +113,50 @@ If the backend rejects the push, its own message is shown, not a bare status cod
 
 The push always re-validates before it sends, so **Send to Perplexity** is safe to
 tap directly.
+
+## Entering a chain by hand
+
+Use **Chain Entry / Editor** when a wall exists on paper before it exists in the app,
+or when a measurement needs correcting straight into the registry. Nothing here
+requires editing Swift source.
+
+Two input methods, both editing the same draft:
+
+1. **Row editor.** Each row is global ID, kind, label, width, optional height, and
+   optional panel split. Widths accept `43`, `12.75`, `12 3/4`, or `12-3/4`. Use the
+   **Edit** button to reorder rows left-to-right along the wall or delete them.
+2. **Paste / import.** Paste a chain and tap **Parse Chain String**:
+
+   ```text
+   C1=8in | Z1=43in | C2=8in | Z2=12.75in | Z3A=5in | Z3B=96in | Z3C=5in | Z4=12.75in | C3=8in | Z5=39.5in | C4=8in
+   ```
+
+   Entries separate on `|`, `;`, `,`, or new lines. Per entry you can add a height
+   (`Z3B=96in x 60in`) and a panel split (`Z3B=96in(22/52/22)`). Parsing replaces all
+   rows; any ID that matches the Wall 1 source of truth keeps its kind, label, and
+   notes, so a re-pasted Wall 1 chain comes back fully described rather than as bare
+   widths.
+
+Actions on the screen: **Load Wall 1 Template**, **Parse Chain String**,
+**Validate Chain**, **Preview Payload**, **Send to Perplexity**. The endpoint and
+token fields are the same `WallRegistryPushSettings` as the per-wall push screen, so
+they only need to be entered once per device.
+
+**Validate Chain** reports every problem at once — missing room or wall ID, duplicate
+global IDs, unparseable or non-positive widths, a panel split that does not sum to its
+segment, and an expected total that does not match the segment total. When the totals
+disagree, a one-tap **Set Expected Total to …** button is offered. Rows also show their
+own inline error while being typed.
+
+The two locked rules are printed on the screen itself:
+
+- Clear wall returns (`Z2` / `Z4` style) beside a window unit stay separate locked
+  zones and are never absorbed into the window unit.
+- Global IDs are continuous across the room and do not restart per wall.
+
+This screen edits the **registry payload**, not the app's `WallSpec`. For a wall that
+should live in the app permanently, build it with **Add Wall** and let
+`WallRegistryBridge` derive the registry.
 
 ## Running the backend
 
