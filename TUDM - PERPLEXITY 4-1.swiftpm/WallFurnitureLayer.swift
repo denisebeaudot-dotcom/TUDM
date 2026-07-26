@@ -96,7 +96,6 @@ struct WallFurniturePlan {
         // Find the largest window opening. Sofa centers on its center X.
         var cursor: Double = -wall.totalWidth / 2
         var windowSegs: [(centerX: Double, width: Double, opening: OpeningSpec)] = []
-        var windowCasingBoundsByCenter: [Double: (Double, Double)] = [:]  // centerX -> (leftEdge, rightEdge) of casing pair around the window
         // Also collect casings so we can compute the casing pair around each window
         struct SegBox {
             let centerX: Double

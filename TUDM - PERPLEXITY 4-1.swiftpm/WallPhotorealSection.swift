@@ -410,12 +410,4 @@ private struct RenderHistoryRow: View {
     }
 }
 
-// MARK: - Share sheet wrapper
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
-}
+// Uses the top-level ShareSheet defined in InteriorAuthorityWorksheet.swift.

@@ -520,7 +520,7 @@ struct WallFormView: View {
                 }
                 Button("Copy Prompt Text") {
                     if let url = exportedFrameURLs.first(where: { $0.pathExtension == "md" }),
-                       let text = try? String(contentsOf: url) {
+                       let text = try? String(contentsOf: url, encoding: .utf8) {
                         UIPasteboard.general.string = text
                     }
                 }
