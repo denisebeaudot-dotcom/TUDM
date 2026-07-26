@@ -57,6 +57,7 @@ struct WallFormView: View {
     enum WallPreviewMode: String, CaseIterable, Identifiable {
         case ortho = "Ortho"
         case threeD = "3D"
+        case furnished = "Furnished"
         var id: String { rawValue }
     }
     
@@ -458,6 +459,11 @@ struct WallFormView: View {
                     case .threeD:
                         WallRealityPreview(wall: previewWall.locked, defaults: effectiveDefaults)
                             .frame(minHeight: 320)
+                            .background(Color(white: 0.95))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    case .furnished:
+                        WallFurnitureRealityPreview(wall: previewWall.locked, defaults: effectiveDefaults)
+                            .frame(minHeight: 360)
                             .background(Color(white: 0.95))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
