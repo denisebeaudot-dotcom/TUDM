@@ -173,8 +173,8 @@ struct StylePickerView: View {
             LabeledLine(label: "Palette",
                         value: "\(dna.palette.primary), \(dna.palette.secondary), \(dna.palette.accent)")
             LabeledLine(label: "Wood", value: dna.palette.woodTone)
-            LabeledLine(label: "Metal", value: dna.palette.metal)
-            LabeledLine(label: "Lighting", value: dna.lighting.daylight)
+            LabeledLine(label: "Metal", value: dna.palette.metalFinish)
+            LabeledLine(label: "Lighting", value: dna.lighting.timeOfDay)
             LabeledLine(label: "Window", value: dna.windowDressing)
         } header: {
             Text("Composed Style DNA")

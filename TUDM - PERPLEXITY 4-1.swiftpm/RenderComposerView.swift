@@ -247,14 +247,16 @@ struct RenderComposerView: View {
         lines.append("  Walls:      \(dna.materials.walls)")
         lines.append("  Floor:      \(dna.materials.floor)")
         lines.append("  Upholstery: \(dna.materials.upholstery)")
-        if !dna.materials.accentMaterials.isEmpty {
-            lines.append("  Accents:    " + dna.materials.accentMaterials.joined(separator: ", "))
+        lines.append("  Trim:       \(dna.materials.trim)")
+        if !dna.materials.accents.isEmpty {
+            lines.append("  Accents:    " + dna.materials.accents.joined(separator: ", "))
         }
         lines.append("")
         lines.append("Lighting:")
-        lines.append("  Daylight:  \(dna.lighting.daylight)")
-        if !dna.lighting.interiorFixtures.isEmpty {
-            lines.append("  Fixtures:  " + dna.lighting.interiorFixtures.joined(separator: ", "))
+        lines.append("  Time:      \(dna.lighting.timeOfDay)")
+        lines.append("  Quality:   \(dna.lighting.quality)")
+        if !dna.lighting.fixtures.isEmpty {
+            lines.append("  Fixtures:  " + dna.lighting.fixtures.joined(separator: ", "))
         }
         lines.append("")
         lines.append("Hero pieces: " + dna.heroPieces.joined(separator: "; "))

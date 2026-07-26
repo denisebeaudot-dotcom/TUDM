@@ -682,14 +682,14 @@ A structural beam zone runs the full width of the wall across the top 8in. It is
         parts.append("- upholstery: \(dna.materials.upholstery)")
         parts.append("- trim: \(dna.materials.trim)")
         if !dna.materials.accents.isEmpty {
-            parts.append("- accent materials: \(dna.materials.accents.joined(separator: \", \"))")
+            parts.append("- accent materials: \(dna.materials.accents.joined(separator: ", "))")
         }
         parts.append("")
         parts.append("Lighting:")
         parts.append("- time of day: \(dna.lighting.timeOfDay)")
         parts.append("- quality: \(dna.lighting.quality)")
         if !dna.lighting.fixtures.isEmpty {
-            parts.append("- fixtures: \(dna.lighting.fixtures.joined(separator: \", \"))")
+            parts.append("- fixtures: \(dna.lighting.fixtures.joined(separator: ", "))")
         }
         parts.append("")
         parts.append("Hero pieces (place in front of the wall, do not overlap the columns or shelves):")
