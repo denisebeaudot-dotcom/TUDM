@@ -101,7 +101,7 @@ struct WallFurniturePlan {
         struct SegBox {
             let centerX: Double
             let width: Double
-            let kind: WallSegmentKind
+            let kind: SegmentKind
         }
         var boxes: [SegBox] = []
         for seg in wall.segments {
@@ -748,7 +748,7 @@ struct WallFurnitureRealityPreview: View {
         .padding()
     }
     
-    private func positionCamera(_ anchor: AnchorEntity, for wall: LockedWall) {
+    private func positionCamera(_ anchor: Entity, for wall: LockedWall) {
         // Face-on: camera on wall centerline, at seated eye level,
         // pulled back proportional to wall width so the whole wall fits.
         let wallW = wall.totalWidth
