@@ -552,6 +552,18 @@ struct RoomDetailView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
+                        
+                        if FamilyRoomWoodStoveSeed.matches(room: room)
+                            && !FamilyRoomWoodStoveSeed.alreadySeeded(room: room) {
+                            Button {
+                                if let alcove = FamilyRoomWoodStoveSeed.makeAlcove(for: room) {
+                                    store.addAlcove(projectID: projectID, roomID: roomID, alcove: alcove)
+                                }
+                            } label: {
+                                Label("Seed Family Room Wood Stove Corner", systemImage: "flame.fill")
+                            }
+                            .foregroundStyle(.orange)
+                        }
                     }
                     
                     Section("Room Beams") {
