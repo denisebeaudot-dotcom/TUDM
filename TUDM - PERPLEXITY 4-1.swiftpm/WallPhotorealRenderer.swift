@@ -254,6 +254,58 @@ enum WallPhotorealRenderer {
         return image
     }
     
+    // MARK: Preview a render (no writes)
+    //
+    // Runs the auto-snapshot and composes the prompt, but writes
+    // nothing to disk. Used by the UI to show an inline preview
+    // before the user commits to Share + Save.
+    
+    struct PreviewResult {
+        var referenceImage: UIImage?
+        var promptJSON: Data
+        var structuralSummary: String
+        var fullPrompt: String
+        var preset: PhotorealPreset
+    }
+    
+    @MainActor
+    static func previewRequest(wall: LockedWall,
+                               defaults: RoomDefaults,
+                               preset: PhotorealPreset,
+                               autoSnapshot: Bool = true) async -> PreviewResult? {
+        let snapshot = autoSnapshot
+            ? await snapshotFurnishedView(wall: wall, defaults: defaults)
+            : nil
+        
+        let structural = WallStructuralSummary.generate(wall: wall, defaults: defaults)
+        let fullPrompt = preset.compose(structural: structural)
+        
+        let bundle = RenderRequestBundle(
+            wallID: wall.id.uuidString,
+            wallName: wall.name,
+            wallTotalWidth: wall.totalWidth,
+            ceilingHeight: defaults.ceilingHeight,
+            presetID: preset.id.uuidString,
+            presetName: preset.name,
+            presetVersion: preset.version,
+            structuralSummary: structural,
+            fullPrompt: fullPrompt,
+            referenceImageFilename: "",
+            aspectRatio: preset.aspectRatio,
+            modelName: preset.modelName,
+            createdAt: Date()
+        )
+        guard let promptData = bundle.toJSONData() else { return nil }
+        
+        return PreviewResult(
+            referenceImage: snapshot,
+            promptJSON: promptData,
+            structuralSummary: structural,
+            fullPrompt: fullPrompt,
+            preset: preset
+        )
+    }
+    
     // MARK: Package a render request
     //
     // Attempts to auto-snapshot the Furnished view via an offscreen

@@ -16,6 +16,8 @@ struct WallPhotorealSection: View {
     @State private var presets: [PhotorealPreset] = PhotorealPresetLibrary.load()
     @State private var selectedPresetID: UUID = PhotorealPresetLibrary.bohoMorningEditorial.id
     @State private var history: [RenderHistoryRecord] = []
+    @State private var previewResult: WallPhotorealRenderer.PreviewResult?
+    @State private var isSnapshotting: Bool = false
     @State private var packageResult: WallPhotorealRenderer.PackageResult?
     @State private var showShare: Bool = false
     @State private var showImportPicker: Bool = false
@@ -58,17 +60,90 @@ struct WallPhotorealSection: View {
                 }
             }
             
-            // Render button
+            // Render / preview button
             Button {
-                packageAndShare()
+                runPreview()
             } label: {
-                Label("Render Photoreal (Package + Share)", systemImage: "wand.and.stars")
+                HStack {
+                    if isSnapshotting {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Snapshotting Furnished view...")
+                    } else {
+                        Label("Preview Photoreal Snapshot", systemImage: "wand.and.stars")
+                    }
+                }
             }
+            .disabled(isSnapshotting)
             
             if !statusMessage.isEmpty {
                 Text(statusMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            
+            // Inline preview of the pending snapshot
+            if let preview = previewResult {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Snapshot Preview")
+                        .font(.caption).bold()
+                        .foregroundStyle(.secondary)
+                    
+                    if let img = preview.referenceImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                    } else {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                            Text("Snapshot failed. You can still share the prompt JSON, then export the Furnished view manually.")
+                                .font(.caption)
+                        }
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.08)))
+                    }
+                    
+                    Text(preview.preset.name + " v\(preview.preset.version)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack {
+                        Button {
+                            commitAndShare()
+                        } label: {
+                            Label("Share + Save to History", systemImage: "square.and.arrow.up")
+                                .font(.callout)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        
+                        Button(role: .destructive) {
+                            previewResult = nil
+                            statusMessage = "Preview discarded."
+                        } label: {
+                            Label("Discard", systemImage: "xmark")
+                                .font(.callout)
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Spacer()
+                        
+                        Button {
+                            runPreview()
+                        } label: {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .font(.callout)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isSnapshotting)
+                    }
+                }
+                .padding(.vertical, 4)
             }
             
             // Canonical preview
@@ -140,28 +215,52 @@ struct WallPhotorealSection: View {
         }
     }
     
-    private func packageAndShare() {
-        statusMessage = "Snapshotting Furnished view and packaging prompt..."
+    private func runPreview() {
+        statusMessage = ""
+        isSnapshotting = true
+        let preset = selectedPreset
         Task { @MainActor in
-            let preset = selectedPreset
-            if let result = await WallPhotorealRenderer.packageRequest(
+            let preview = await WallPhotorealRenderer.previewRequest(
                 wall: wall,
                 defaults: defaults,
                 preset: preset,
-                referenceImage: nil,
-                autoSnapshot: true,
+                autoSnapshot: true
+            )
+            isSnapshotting = false
+            if let preview {
+                previewResult = preview
+                if preview.referenceImage != nil {
+                    statusMessage = "Snapshot captured. Review below, then Share + Save."
+                } else {
+                    statusMessage = "Snapshot could not be captured. Prompt JSON is still available."
+                }
+            } else {
+                statusMessage = "Preview failed. Try again."
+            }
+        }
+    }
+    
+    private func commitAndShare() {
+        guard let preview = previewResult else { return }
+        statusMessage = "Saving to history..."
+        Task { @MainActor in
+            if let result = await WallPhotorealRenderer.packageRequest(
+                wall: wall,
+                defaults: defaults,
+                preset: preview.preset,
+                referenceImage: preview.referenceImage,
+                autoSnapshot: false,
                 note: ""
             ) {
                 packageResult = result
                 history = WallPhotorealRenderer.loadHistory(wallID: wall.id.uuidString)
-                if result.referenceImageURL != nil {
-                    statusMessage = "Ready. Reference PNG and prompt JSON are being shared. Send both to your Perplexity session, then Import the finished PNG below."
-                } else {
-                    statusMessage = "Prompt packaged but auto-snapshot failed. Export the Furnished view manually via Export Render Frame to Photos, then attach both to your session."
-                }
+                previewResult = nil
+                statusMessage = result.referenceImageURL != nil
+                    ? "Saved to history. Sharing reference PNG and prompt JSON."
+                    : "Saved to history. Sharing prompt JSON only."
                 showShare = true
             } else {
-                statusMessage = "Could not package the render. Try again."
+                statusMessage = "Could not save. Try again."
             }
         }
     }
