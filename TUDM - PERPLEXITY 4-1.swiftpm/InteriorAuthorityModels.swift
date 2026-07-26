@@ -86,6 +86,13 @@ struct WallSpec: Identifiable, Codable, Hashable {
     var usesOverrides: Bool
     var overrides: RoomDefaults?
     
+    /// When true, this wall's structural data is permanently locked. LockedWall
+    /// respects this flag; mutation attempts should be treated as programmer
+    /// error. Seed walls that represent real construction (e.g. Wall 1) set this
+    /// to true so the alcove subsystem and future editors can't accidentally
+    /// mutate them.
+    var isLocked: Bool = false
+    
     init(
         id: UUID = UUID(),
         name: String = "",
@@ -96,7 +103,8 @@ struct WallSpec: Identifiable, Codable, Hashable {
         verticalChainString: String = "",
         segments: [WallSegment] = [],
         usesOverrides: Bool = false,
-        overrides: RoomDefaults? = nil
+        overrides: RoomDefaults? = nil,
+        isLocked: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -108,6 +116,7 @@ struct WallSpec: Identifiable, Codable, Hashable {
         self.segments = segments
         self.usesOverrides = usesOverrides
         self.overrides = overrides
+        self.isLocked = isLocked
     }
     
     var segmentTotal: Double {
@@ -121,7 +130,7 @@ struct WallSpec: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, name, totalWidth, ruleSet, notes
         case chainString, verticalChainString
-        case segments, usesOverrides, overrides
+        case segments, usesOverrides, overrides, isLocked
     }
     
     init(from decoder: Decoder) throws {
@@ -136,6 +145,7 @@ struct WallSpec: Identifiable, Codable, Hashable {
         self.segments = try c.decodeIfPresent([WallSegment].self, forKey: .segments) ?? []
         self.usesOverrides = try c.decodeIfPresent(Bool.self, forKey: .usesOverrides) ?? false
         self.overrides = try c.decodeIfPresent(RoomDefaults.self, forKey: .overrides)
+        self.isLocked = try c.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
     }
 }
 

@@ -49,6 +49,15 @@ struct LockedWall: Identifiable, Hashable {
     var usesOverrides: Bool { wall.usesOverrides }
     var overrides: RoomDefaults? { wall.overrides }
     
+    // MARK: Lock state
+    
+    /// When true, this wall's structural data is permanently locked. Consumers
+    /// that intend to mutate a WallSpec should refuse to touch it unless a
+    /// deliberate unlock has been performed. LockedWall itself is always
+    /// read-only regardless of this flag; the flag is a data-level assertion
+    /// carried alongside the wall so it survives round-trip through JSON.
+    var isLocked: Bool { wall.isLocked }
+    
     // MARK: Mirrored computed properties
     
     /// Sum of segment widths. Should equal totalWidth for a valid wall.
