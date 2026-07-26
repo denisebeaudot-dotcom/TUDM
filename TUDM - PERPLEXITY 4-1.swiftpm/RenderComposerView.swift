@@ -13,7 +13,7 @@ struct RenderComposerView: View {
 
     // ---- Style state ----
     @State private var styleSelection: StyleSelection = .init(
-        family: StyleFamilyCatalog.gentlemansLibrary
+        family: StyleFamilyDNACatalog.gentlemansLibrary
     )
 
     // ---- Persona state ----
@@ -241,7 +241,7 @@ struct RenderComposerView: View {
         lines.append("  Secondary: \(dna.palette.secondary)")
         lines.append("  Accent:    \(dna.palette.accent)")
         lines.append("  Wood:      \(dna.palette.woodTone)")
-        lines.append("  Metal:     \(dna.palette.metal)")
+        lines.append("  Metal:     \(dna.palette.metalFinish)")
         lines.append("")
         lines.append("Materials:")
         lines.append("  Walls:      \(dna.materials.walls)")

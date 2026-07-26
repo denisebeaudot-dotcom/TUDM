@@ -19,7 +19,7 @@ import Foundation
 // MARK: Style Family (18)
 // =====================================================================
 
-struct StyleFamily: Codable, Hashable, Identifiable {
+struct StyleFamilyDNA: Codable, Hashable, Identifiable {
     var id: String { name }
     var name: String
     var tagline: String
@@ -32,9 +32,9 @@ struct StyleFamily: Codable, Hashable, Identifiable {
     var avoid: [String]
 }
 
-enum StyleFamilyCatalog {
+enum StyleFamilyDNACatalog {
 
-    static let all: [StyleFamily] = [
+    static let all: [StyleFamilyDNA] = [
         boho, belgianTransitional, japandi, parisianClassic, warmMinimal,
         gentlemansLibrary, coastalNordic, moroccanRiad, californiaHacienda,
         englishCountryHouse, mediterraneanFarmhouse, mountainLodge,
@@ -42,13 +42,13 @@ enum StyleFamilyCatalog {
         wabiSabi, shakerModern, tropicalModernist
     ]
 
-    static func find(_ name: String) -> StyleFamily? {
+    static func find(_ name: String) -> StyleFamilyDNA? {
         all.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
     // ---- individual families ----------------------------------------
 
-    static let boho = StyleFamily(
+    static let boho = StyleFamilyDNA(
         name: "Boho Morning Editorial",
         tagline: "sun-drenched, layered, unhurried",
         palette: .init(primary: "off-white plaster", secondary: "sun-bleached terracotta",
@@ -62,7 +62,7 @@ enum StyleFamilyCatalog {
         avoid: ["synthetic sheen", "matched sets", "cold gray tones"]
     )
 
-    static let belgianTransitional = StyleFamily(
+    static let belgianTransitional = StyleFamilyDNA(
         name: "Belgian Transitional Country House",
         tagline: "muted, honest, elegantly restrained",
         palette: .init(primary: "warm putty white", secondary: "faded ink",
@@ -76,7 +76,7 @@ enum StyleFamilyCatalog {
         avoid: ["shine", "trend colors", "anything catalog-fresh"]
     )
 
-    static let japandi = StyleFamily(
+    static let japandi = StyleFamilyDNA(
         name: "Japandi Quiet Morning",
         tagline: "restrained, natural, deliberate",
         palette: .init(primary: "warm off-white", secondary: "ash",
@@ -90,7 +90,7 @@ enum StyleFamilyCatalog {
         avoid: ["glossy finishes", "warm-yellow lighting", "clutter"]
     )
 
-    static let parisianClassic = StyleFamily(
+    static let parisianClassic = StyleFamilyDNA(
         name: "Parisian Classic Morning Salon",
         tagline: "haussmann grandeur, weekday morning",
         palette: .init(primary: "ivory limewash", secondary: "faded rose",
@@ -104,7 +104,7 @@ enum StyleFamilyCatalog {
         avoid: ["farmhouse anything", "rustic wood", "black metal"]
     )
 
-    static let warmMinimal = StyleFamily(
+    static let warmMinimal = StyleFamilyDNA(
         name: "Warm Minimal",
         tagline: "quiet, warm, essential",
         palette: .init(primary: "warm white", secondary: "sand",
@@ -118,7 +118,7 @@ enum StyleFamilyCatalog {
         avoid: ["knick-knacks", "cool tones", "high contrast"]
     )
 
-    static let gentlemansLibrary = StyleFamily(
+    static let gentlemansLibrary = StyleFamilyDNA(
         name: "Gentleman's Library London Club",
         tagline: "leather, ink, decanters, weight",
         palette: .init(primary: "deep ink walls", secondary: "cognac leather",
@@ -132,7 +132,7 @@ enum StyleFamilyCatalog {
         avoid: ["anything bright", "modern electronics visible", "matched leather sets"]
     )
 
-    static let coastalNordic = StyleFamily(
+    static let coastalNordic = StyleFamilyDNA(
         name: "Coastal Nordic",
         tagline: "salt light, pale wood, quiet water",
         palette: .init(primary: "chalk white", secondary: "pale gray-blue",
@@ -146,7 +146,7 @@ enum StyleFamilyCatalog {
         avoid: ["heavy colors", "gilt", "gloss"]
     )
 
-    static let moroccanRiad = StyleFamily(
+    static let moroccanRiad = StyleFamilyDNA(
         name: "Moroccan Riad",
         tagline: "tadelakt, brass, tea light, deep shade",
         palette: .init(primary: "sand tadelakt", secondary: "saffron",
@@ -160,7 +160,7 @@ enum StyleFamilyCatalog {
         avoid: ["cold whites", "modern industrial finishes", "european antiques"]
     )
 
-    static let californiaHacienda = StyleFamily(
+    static let californiaHacienda = StyleFamilyDNA(
         name: "California Hacienda",
         tagline: "adobe, terracotta, golden hour",
         palette: .init(primary: "adobe cream", secondary: "burnt sienna",
@@ -174,7 +174,7 @@ enum StyleFamilyCatalog {
         avoid: ["gilt", "pastels", "shine"]
     )
 
-    static let englishCountryHouse = StyleFamily(
+    static let englishCountryHouse = StyleFamilyDNA(
         name: "English Country House",
         tagline: "chintz, dog beds, generations of books",
         palette: .init(primary: "warm chalk", secondary: "moss and burgundy chintz",
@@ -188,7 +188,7 @@ enum StyleFamilyCatalog {
         avoid: ["anything modern", "minimalism", "cool grays"]
     )
 
-    static let mediterraneanFarmhouse = StyleFamily(
+    static let mediterraneanFarmhouse = StyleFamilyDNA(
         name: "Mediterranean Farmhouse",
         tagline: "olive groves, whitewash, cured light",
         palette: .init(primary: "chalk white plaster", secondary: "olive green",
@@ -202,7 +202,7 @@ enum StyleFamilyCatalog {
         avoid: ["gilt", "shine", "matched sets"]
     )
 
-    static let mountainLodge = StyleFamily(
+    static let mountainLodge = StyleFamilyDNA(
         name: "Mountain Lodge",
         tagline: "hewn timber, wool, hearth glow",
         palette: .init(primary: "smoked cedar walls", secondary: "cream shearling",
@@ -216,7 +216,7 @@ enum StyleFamilyCatalog {
         avoid: ["polish", "gilt", "coastal whites"]
     )
 
-    static let artDeco = StyleFamily(
+    static let artDeco = StyleFamilyDNA(
         name: "Art Deco Salon",
         tagline: "geometry, lacquer, glamour",
         palette: .init(primary: "champagne", secondary: "ink black",
@@ -230,7 +230,7 @@ enum StyleFamilyCatalog {
         avoid: ["farmhouse", "rustic", "distressed anything"]
     )
 
-    static let italianRenaissanceRevival = StyleFamily(
+    static let italianRenaissanceRevival = StyleFamilyDNA(
         name: "Italian Renaissance Revival",
         tagline: "frescoed calm, aged gilt, garden light",
         palette: .init(primary: "buttermilk fresco", secondary: "faded verdigris",
@@ -244,7 +244,7 @@ enum StyleFamilyCatalog {
         avoid: ["anything modern", "cool tones", "minimalism"]
     )
 
-    static let industrialLoft = StyleFamily(
+    static let industrialLoft = StyleFamilyDNA(
         name: "Industrial Loft",
         tagline: "brick, steel, honest volumes",
         palette: .init(primary: "warm brick", secondary: "raw concrete",
@@ -258,7 +258,7 @@ enum StyleFamilyCatalog {
         avoid: ["ornament", "pastels", "gilt"]
     )
 
-    static let wabiSabi = StyleFamily(
+    static let wabiSabi = StyleFamilyDNA(
         name: "Wabi-Sabi",
         tagline: "imperfect, weathered, revered",
         palette: .init(primary: "unbleached earth", secondary: "moss and stone",
@@ -272,7 +272,7 @@ enum StyleFamilyCatalog {
         avoid: ["ornament", "shine", "matched sets"]
     )
 
-    static let shakerModern = StyleFamily(
+    static let shakerModern = StyleFamilyDNA(
         name: "Shaker Modern",
         tagline: "honest joinery, restraint, discipline",
         palette: .init(primary: "chalk white", secondary: "milk paint blue",
@@ -286,7 +286,7 @@ enum StyleFamilyCatalog {
         avoid: ["ornament", "shine", "excess"]
     )
 
-    static let tropicalModernist = StyleFamily(
+    static let tropicalModernist = StyleFamilyDNA(
         name: "Tropical Modernist",
         tagline: "teak, breeze, filtered green light",
         palette: .init(primary: "coconut white", secondary: "deep teak",
@@ -555,7 +555,7 @@ enum MoodWordCatalog {
 
 struct StyleSelection: Codable, Hashable {
     /// Required. The base grammar.
-    var family: StyleFamily
+    var family: StyleFamilyDNA
     /// Optional muse layer.
     var muse: DesignerMuse? = nil
     /// Optional 1-3 mood words.

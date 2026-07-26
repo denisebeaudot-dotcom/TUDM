@@ -212,12 +212,12 @@ struct StylePickerView: View {
 // MARK: - Family list
 
 private struct StyleFamilyList: View {
-    @Binding var selectedFamily: StyleFamily
+    @Binding var selectedFamily: StyleFamilyDNA
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
-            ForEach(StyleFamilyCatalog.all) { family in
+            ForEach(StyleFamilyDNACatalog.all) { family in
                 Button {
                     selectedFamily = family
                     dismiss()

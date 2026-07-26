@@ -721,7 +721,7 @@ struct CompatibilityCheck {
 enum PersonaStyleGuardrail {
 
     /// Check whether the persona archetype fits the chosen style family.
-    static func check(persona: PersonaArchetype, family: StyleFamily) -> CompatibilityCheck {
+    static func check(persona: PersonaArchetype, family: StyleFamilyDNA) -> CompatibilityCheck {
         if persona.compatibleFamilies.contains(family.name) {
             return CompatibilityCheck(
                 level: .compatible,
