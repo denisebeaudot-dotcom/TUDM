@@ -49,21 +49,16 @@ enum RenderSpeed: String, Codable, Hashable, CaseIterable {
         }
     }
     
-    // How much to compact the prompt. Draft strips optional embellishment
-    // to shave inference time; Final sends the full brief.
-    var promptDetail: PromptDetail {
-        switch self {
-        case .draft:    return .compact
-        case .standard: return .standard
-        case .final:    return .full
-        }
-    }
+    // Every tier now sends the full designer-language prompt. Draft still
+    // uses the fast model, but the nagging structural + palette + staging
+    // brief is preserved because it produced the best-looking renders.
+    var promptDetail: PromptDetail { .full }
 }
 
 enum PromptDetail {
-    case compact   // structural + palette + one-line staging only
-    case standard  // + shelf staging + soft staging
-    case full      // full designer language
+    case compact   // reserved, not currently used
+    case standard  // reserved, not currently used
+    case full      // full designer language (current default at every tier)
 }
 
 struct StyleFamily: Codable, Hashable, RawRepresentable {

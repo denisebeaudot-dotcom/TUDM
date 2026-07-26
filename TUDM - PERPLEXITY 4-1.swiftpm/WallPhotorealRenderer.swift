@@ -274,13 +274,11 @@ enum WallPhotorealRenderer {
         return "\(wall.id.uuidString)|c\(String(format: "%.2f", defaults.ceilingHeight))|b\(String(format: "%.2f", defaults.beamHeight))|bb\(String(format: "%.2f", defaults.baseboardHeight))|\(chain)"
     }
     
-    // Mask resolution per speed tier. Draft/Standard use a smaller mask
-    // to reduce img2img upload + attention cost; Final uses the full mask.
+    // Mask resolution. All tiers use the same 1600x900 mask so structural
+    // fidelity is identical across Draft, Standard, and Final. Speed is
+    // controlled purely by which image model runs the img2img call.
     private static func maskSize(for speed: RenderSpeed?) -> CGSize {
-        switch speed ?? .final {
-        case .draft, .standard: return CGSize(width: 1024, height: 576)
-        case .final:            return CGSize(width: 1600, height: 900)
-        }
+        return CGSize(width: 1600, height: 900)
     }
     
     static func clearMaskCache() {
