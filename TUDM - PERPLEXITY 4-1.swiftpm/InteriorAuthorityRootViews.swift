@@ -373,6 +373,8 @@ struct RoomDetailView: View {
     @State private var editingBeam: RoomBeam?
     @State private var pushingWall: LockedWall?
     @State private var showingChainEntry = false
+    @State private var showingNewAlcove = false
+    @State private var editingAlcove: RoomAlcove?
     
     private var projectIndex: Int? {
         store.projects.firstIndex(where: { $0.id == projectID })
@@ -520,6 +522,38 @@ struct RoomDetailView: View {
                         Text("Validate a wall's measured chain and push it to your backend proxy as the render source of truth. Chain Entry / Editor lets you type or paste a chain by hand, starting from the Wall 1 template.")
                     }
                     
+                    Section("Alcoves") {
+                        if room.alcoves.isEmpty {
+                            Text("No alcoves. Alcoves are corner features (wood stove, corner fireplace, nook, bar) that span two walls.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(room.alcoves) { alcove in
+                                Button {
+                                    editingAlcove = alcove
+                                } label: {
+                                    alcoveRow(alcove: alcove, walls: room.wallSpecs)
+                                }
+                            }
+                            .onDelete { offsets in
+                                store.deleteAlcoves(projectID: projectID, roomID: roomID, at: offsets)
+                            }
+                        }
+                        
+                        Button {
+                            showingNewAlcove = true
+                        } label: {
+                            Label("Add Alcove", systemImage: "plus")
+                        }
+                        .disabled(room.wallSpecs.count < 2)
+                        
+                        if room.wallSpecs.count < 2 {
+                            Text("Add at least two walls before creating a corner alcove.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    
                     Section("Room Beams") {
                         if room.beams.isEmpty {
                             Text("No beams. Beams span between columns across walls.")
@@ -636,6 +670,24 @@ struct RoomDetailView: View {
                     }
                     .interactiveDismissDisabled()
                 }
+                .sheet(isPresented: $showingNewAlcove) {
+                    AlcoveFormView(
+                        mode: .create,
+                        availableWalls: room.wallSpecs
+                    ) { alcove in
+                        store.addAlcove(projectID: projectID, roomID: roomID, alcove: alcove)
+                    }
+                    .interactiveDismissDisabled()
+                }
+                .sheet(item: $editingAlcove) { alcove in
+                    AlcoveFormView(
+                        mode: .edit(alcove),
+                        availableWalls: room.wallSpecs
+                    ) { updated in
+                        store.updateAlcove(projectID: projectID, roomID: roomID, alcove: updated)
+                    }
+                    .interactiveDismissDisabled()
+                }
             } else {
                 ContentUnavailableView("Project Missing", systemImage: "folder.badge.questionmark")
             }
@@ -649,6 +701,72 @@ struct RoomDetailView: View {
         return draft
     }
 
+    @ViewBuilder
+    private func alcoveRow(alcove: RoomAlcove, walls: [WallSpec]) -> some View {
+        let wallA = walls.first(where: { $0.id == alcove.anchor.wallA })
+        let wallB = walls.first(where: { $0.id == alcove.anchor.wallB })
+        let wallATotal = wallA?.totalWidth ?? 0
+        let wallBTotal = wallB?.totalWidth ?? 0
+        let displayName = alcove.name.trimmed.isEmpty ? "Untitled Alcove" : alcove.name
+        
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(displayName)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                if alcove.isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Text(payloadDescription(alcove.payload))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Text("\(wallA?.name ?? "?"): \(String(format: "%.2f", alcove.anchor.footprintA))in · \(wallB?.name ?? "?"): \(String(format: "%.2f", alcove.anchor.footprintB))in")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            
+            Text("Platform \(String(format: "%.2f", alcove.platform.height))in \(alcove.platform.shape.rawValue) \(alcove.platform.material.rawValue) · Back \(alcove.back.style.rawValue) \(alcove.back.material.rawValue)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            
+            AlcovePlanThumbnail(
+                alcove: alcove.locked,
+                wallATotalWidth: wallATotal,
+                wallBTotalWidth: wallBTotal
+            )
+            .frame(height: 90)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.top, 4)
+            
+            if !alcove.notes.trimmed.isEmpty {
+                Text(alcove.notes)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func payloadDescription(_ payload: AlcovePayload) -> String {
+        switch payload {
+        case .empty:
+            return "Empty"
+        case .woodStove(let spec):
+            let man = spec.manufacturer.trimmed
+            let model = spec.modelName.trimmed
+            let stem = [man, model].filter { !$0.isEmpty }.joined(separator: " ")
+            if stem.isEmpty {
+                return "Wood Stove"
+            }
+            return "Wood Stove · \(stem)"
+        }
+    }
+    
     @ViewBuilder
     private func beamRow(beam: RoomBeam, walls: [WallSpec]) -> some View {
         let refs = BeamColumnRef.gather(from: walls)
