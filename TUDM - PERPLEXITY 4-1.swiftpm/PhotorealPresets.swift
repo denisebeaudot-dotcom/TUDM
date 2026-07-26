@@ -185,11 +185,26 @@ struct PhotorealPreset: Codable, Hashable, Identifiable {
         Photorealistic architectural interior render, \(cameraLine). \
         Editorial magazine quality, \(aestheticLine). \(atmosphereLine).
         
-        Use the reference image as strict structural blueprint. Every \
-        structural element — column count, shelf count per bay, window \
-        panel split, muntin grid, beam header, wall returns, casing, \
-        curtain rod, blinds, sofa, side tables, coffee table, rug — \
-        must match exactly in count, position, and proportion.
+        THE REFERENCE IMAGE IS A DIMENSIONED ARCHITECTURAL ELEVATION MASK, \
+        not a photograph. Every zone width, column position, shelf edge, \
+        window mullion, and furniture silhouette in the reference is the \
+        exact real-world geometry of the wall. Do not adjust it, do not \
+        center it, do not balance it, do not resize any zone. Match every \
+        horizontal position and every vertical height exactly, then paint \
+        materials, lighting, and atmosphere on top of this geometry.
+        
+        COMPLETE PALETTE AND MATERIAL REPLACEMENT. The flat colors in the \
+        reference are zone markers only, not the target palette. Apply the \
+        materials specified below across every zone. Ignore the reference \
+        image's colors, textures, and lighting entirely.
+        
+        FRAMING: face-on architectural elevation. Sensor plane parallel to \
+        the wall. No perspective, no vanishing point, no lens tilt. The \
+        wall fills the frame edge-to-edge. The first column sits flush at \
+        the left frame edge and the last column sits flush at the right \
+        frame edge. Nothing exists beyond either outer column — no plaster \
+        returns, no adjacent rooms, no fireplaces, no mantels, no doorways, \
+        no additional furniture, no framed art on outer walls.
         
         Structural detail carried forward from the wall's own data: \
         \(structural)
