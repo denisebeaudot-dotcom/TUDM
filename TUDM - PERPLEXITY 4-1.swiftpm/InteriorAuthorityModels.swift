@@ -727,6 +727,47 @@ struct WallSegment: Identifiable, Codable, Hashable {
     /// without renaming anything. The window's 5in casing supplies Z3A and Z3C.
     ///
     ///     C1=8 | Z1=43 | C2=8 | Z2=12.75 | Z3A=5 | Z3B=96 | Z3C=5 | Z4=12.75 | C3=8 | Z5=39.5 | C4=8  → 246
+    ///
+    /// The Z3 window's OpeningSpec is code-locked. See `wall1Z3BOpening()` below,
+    /// which pulls all numeric values from `WindowLockLibrary.wall1Z3B`.
+    
+    /// Constructs the Z3 window OpeningSpec directly from the code-frozen
+    /// WindowLock. Any place in the app that seeds or resets Wall 1's
+    /// window should call this instead of hand-typing values, so drift
+    /// is impossible without editing WindowLockLibrary.
+    static func wall1Z3BOpening() -> OpeningSpec {
+        let lock = WindowLockLibrary.wall1Z3B
+        precondition(
+            lock.panelSplit.count == 3,
+            "wall1Z3BOpening assumes a 3-panel split; the lock changed shape."
+        )
+        let panelString = lock.panelSplit.map { String(Int($0)) }.joined(separator: " / ")
+        let notes = "\(Int(lock.width))in x \(Int(lock.height))in window (code-locked, WindowLock \(lock.version)). \(panelString)in panel split. Side lights carry a grid pattern, center panel stays clear. Frame, mullions, and the \(Int(lock.casingWidth))in casing all around are white."
+        return OpeningSpec(
+            category: .window,
+            windowStyle: .picture,
+            openingWidth: lock.width,
+            openingHeight: lock.height,
+            sillOrBottomAFF: 20,
+            casingLeft: lock.casingWidth,
+            casingRight: lock.casingWidth,
+            casingHead: lock.casingWidth,
+            casingBottom: lock.casingWidth,
+            casingWidth: lock.casingWidth,
+            wallSpaceAboveUnit: 11,
+            panelCount: lock.panelSplit.count,
+            mullionsVertical: max(0, lock.panelSplit.count - 1),
+            muntinsRows: 3,
+            muntinsCols: 2,
+            panels: [
+                WindowPanel(label: "Left side light", widthShare: lock.panelSplit[0], hasMuntinGrid: true),
+                WindowPanel(label: "Center",          widthShare: lock.panelSplit[1], hasMuntinGrid: false),
+                WindowPanel(label: "Right side light", widthShare: lock.panelSplit[2], hasMuntinGrid: true)
+            ],
+            notes: notes
+        )
+    }
+    
     static let wallOneSeedSegments: [WallSegment] = [
         WallSegment(
             label: "C1",
@@ -760,30 +801,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
             label: "Z3",
             width: 0,
             kind: .windowUnit,
-            note: "Main window unit",
-            opening: OpeningSpec(
-                category: .window,
-                windowStyle: .picture,
-                openingWidth: 96,
-                openingHeight: 60,
-                sillOrBottomAFF: 20,
-                casingLeft: 5,
-                casingRight: 5,
-                casingHead: 5,
-                casingBottom: 5,
-                casingWidth: 5,
-                wallSpaceAboveUnit: 11,
-                panelCount: 3,
-                mullionsVertical: 2,
-                muntinsRows: 3,
-                muntinsCols: 2,
-                panels: [
-                    WindowPanel(label: "Left side light", widthShare: 22, hasMuntinGrid: true),
-                    WindowPanel(label: "Center", widthShare: 52, hasMuntinGrid: false),
-                    WindowPanel(label: "Right side light", widthShare: 22, hasMuntinGrid: true)
-                ],
-                notes: "96in x 60in. 22 / 52 / 22 panel split. Side lights carry a grid pattern, center panel stays clear. Frame, mullions, and the 5in casing all around are white."
-            )
+            note: "Main window unit \u{2014} code-locked by WindowLockLibrary.wall1Z3B (see WallRegistryWindowLock.swift). 22 / 52 / 22 panel split at 60in tall.",
+            opening: Self.wall1Z3BOpening()
         ),
         WallSegment(
             label: "Z4",

@@ -14,6 +14,7 @@ enum WallRegistryWall1Example {
     static let expectedTotalWidth: Double = 246
 
     static let lockedRules = [
+        "Window Z3B is code-locked at 96in x 60in with a 22/52/22 panel split. This is enforced by WindowLockLibrary.wall1Z3B and cannot be changed at runtime.",
         "C1 and C4 terminate Wall 1. Nothing on this wall extends past them.",
         "Columns are 8in wide x 9.25in deep.",
         "Open shelves are 9.25in deep and align with the column depth.",
@@ -91,16 +92,7 @@ enum WallRegistryWall1Example {
                     width: 5,
                     notes: casingNote
                 ),
-                .init(
-                    globalId: "Z3B",
-                    localId: "W1-Z3B",
-                    kind: .window,
-                    label: "Main window unit",
-                    width: 96,
-                    height: 60,
-                    panelSplit: [22, 52, 22],
-                    notes: "96in x 60in window. Side lights (22in each) carry a grid pattern. Center panel (52in) stays clear with no grid. Frame and mullions are white."
-                ),
+                Self.wall1WindowSegment(),
                 .init(
                     globalId: "Z3C",
                     localId: "W1-Z3C",
@@ -151,6 +143,26 @@ enum WallRegistryWall1Example {
                 headerTop: 85
             ),
             rules: lockedRules
+        )
+    }
+    
+    /// Constructs the Z3B window segment straight from the code-frozen
+    /// WindowLock. This is the ONLY place in the app that writes the
+    /// Z3B window's numeric values, so drift is structurally impossible
+    /// unless the lock itself is edited in WindowLockLibrary.
+    private static func wall1WindowSegment() -> WallRegistryEnvelope.WallSegment {
+        let lock = WindowLockLibrary.wall1Z3B
+        let panelString = lock.panelSplit.map { String(Int($0)) }.joined(separator: "/")
+        let notes = "\(Int(lock.width))in x \(Int(lock.height))in window (code-locked, WindowLock \(lock.version)). Panel split \(panelString)in. Side lights carry a grid pattern. Center panel stays clear with no grid. Frame and mullions are white."
+        return .init(
+            globalId: lock.globalId,
+            localId: "W1-\(lock.globalId)",
+            kind: .window,
+            label: "Main window unit",
+            width: lock.width,
+            height: lock.height,
+            panelSplit: lock.panelSplit,
+            notes: notes
         )
     }
 }

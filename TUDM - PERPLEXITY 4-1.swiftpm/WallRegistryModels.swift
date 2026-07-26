@@ -189,6 +189,10 @@ enum WallRegistryValidationError: Error, LocalizedError, Equatable {
     case emptyPanelSplit(globalId: String)
     case panelSplitMismatch(globalId: String, expected: Double, actual: Double)
     case totalWidthMismatch(expected: Double, actual: Double)
+    /// A segment covered by a `WindowLock` was found with values that
+    /// do not match the lock. The window must be repaired before this
+    /// wall can be rendered, saved, or pushed to the registry.
+    case windowLockViolation(wallId: String, globalId: String, detail: String)
 
     var errorDescription: String? {
         let number = WallRegistryEnvelope.trimmedNumber
@@ -211,6 +215,8 @@ enum WallRegistryValidationError: Error, LocalizedError, Equatable {
             return "Segment \(globalId) panel split totals \(number(actual)) but the segment is \(number(expected)) wide."
         case let .totalWidthMismatch(expected, actual):
             return "Wall total mismatch. Expected \(number(expected)), segments add up to \(number(actual))."
+        case let .windowLockViolation(wallId, globalId, detail):
+            return "Window lock violated on \(wallId)/\(globalId): \(detail). The 22/52/22 x 60in window is code-locked and cannot be changed."
         }
     }
 }
