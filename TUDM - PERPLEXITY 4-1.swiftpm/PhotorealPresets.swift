@@ -36,6 +36,7 @@ struct StyleFamily: Codable, Hashable, RawRepresentable {
     static let englishCountry   = StyleFamily(rawValue: "English Country")
     static let scandi           = StyleFamily(rawValue: "Scandinavian")
     static let midCentury       = StyleFamily(rawValue: "Mid-Century Modern")
+    static let gentlemansLibrary = StyleFamily(rawValue: "Gentleman's Library")
     static let custom           = StyleFamily(rawValue: "Custom")
 }
 
@@ -735,6 +736,100 @@ enum PhotorealPresetLibrary {
         )
     }
     
+    // MARK: v2 — Gentleman's Library London Club (full monty)
+    //
+    // The Ralph Lauren Home / Robert Kime / Soane Britain world: deep
+    // bookish, cordovan leather chesterfield, oxblood and bottle-green
+    // returns, mahogany and antique brass, patinated library lamps with
+    // emerald glass shades, walls stacked with leather-bound books. Reads
+    // like a Mayfair club at dusk translated into the same wall structure.
+    static var gentlemansLibraryLondonClub: PhotorealPreset {
+        let now = Date(timeIntervalSince1970: 1_785_000_000)
+        return PhotorealPreset(
+            id: UUID(uuidString: "B0F0B0F0-0007-0007-0007-000000000007")!,
+            name: "Gentleman's Library — London Club",
+            version: 1,
+            notes: "Full-monty preset. Ralph Lauren Home / Robert Kime / Soane Britain sensibility. Cordovan chesterfield, oxblood and green, mahogany and brass. Locked. Duplicate before editing.",
+            styleFamily: .gentlemansLibrary,
+            
+            aestheticLine: "gentleman's library in the London club tradition, cordovan leather chesterfield, deep oxblood and bottle-green accents, mahogany, patinated brass",
+            atmosphereLine: "late-afternoon light muted through heavy curtains, warm lamp glow, deeply quiet, uncluttered but bookish, no people, a room that smells faintly of leather and paper",
+            
+            wallPlasterHex: "#E7DFCB",           // warm parchment plaster, reads as aged cream against the dark accents
+            wallReturnAccentHex: "#2F3B2A",      // deep bottle green return
+            casingWhiteHex: "#EDE6D2",           // parchment casing
+            beamWoodHex: "#3C2417",              // dark mahogany beam
+            floorWoodHex: "#5A3820",             // aged mahogany plank floor
+            upholsteryHex: "#5A2A20",            // cordovan leather
+            pillowAccentHex: "#3F1F1A",          // deeper oxblood accent
+            metalHardwareHex: "#7A5A2A",         // patinated antique brass
+            rattanHex: "#3C2417",                // reused for dark wood accents
+            
+            upholsteryMaterial: "cordovan leather chesterfield sofa, deep oxblood with rich patina, hand-tufted diamond pattern on the back and arms, softly worn on the seat cushions, rolled arms, low profile, the leather visibly softened by decades of use",
+            curtainMaterial: "heavy bottle-green velvet floor-length curtain panels, gathered on antique brass rings on a patinated brass rod with acorn finials, pooling deliberately on the floor",
+            blindMaterial: "none — heavy velvet curtains only",
+            floorMaterial: "aged mahogany or dark walnut plank floor, wide boards, hand-oiled matte finish, visible patina, softened board edges, walked-on for a century",
+            wallMaterial: "warm parchment plaster with subtle tonal variation, matte finish, reads as an aged cream against the darker accents",
+            shelfMaterial: "solid mahogany or dark walnut boards, deep honey-to-brown tone with visible grain and softened edges, packed with books to full working density",
+            coffeeTableMaterial: "low mahogany coffee table with turned legs and a lightly distressed top, brass ferrule feet, matte hand-rubbed finish",
+            sideTableMaterial: "antique-inspired mahogany drum tables or brass pedestal side tables with a rich patina",
+            lampShadeMaterial: "patinated antique brass library lamps with emerald-green cased-glass shades, warm interior glow spilling over books and leather",
+            
+            shelfStaging: "shelves packed with restraint and character — leather-bound books in mixed cordovan, oxblood, forest-green, and warm tan spines, mostly standing upright with a few horizontal stacks used as risers for small objects. One or two small oil paintings of a landscape or a hound propped against the shelf back. A pair of antique brass candlesticks unlit. A small terrestrial globe on one shelf. A hand-thrown ceramic vessel or two in cream and matte glaze. A leather-bound reading portfolio lying flat on one shelf. Objects touch the books deliberately, not clutter, quiet composition, warm brown-and-green with parchment relief.",
+            plantStaging: "one large sculptural fern or aspidistra in a matte brass planter on one side of the room; a single small trailing ivy softening one shelf corner. Muted forest green, natural not glossy.",
+            artStaging: "no large artwork on the wall behind the sofa, only the window and its heavy velvet panels. Small propped landscapes and portraits live on the shelves.",
+            
+            qualityFlags: "photorealistic architectural rendering, 4k detail, natural depth of field, matte tonal richness with saturated warm depth, editorial magazine printing quality with warm English lamp-light, Ralph Lauren Home / Robert Kime / Soane Britain sensibility",
+            cameraLine: "face-on elevation view, sensor plane exactly parallel to the wall, no perspective distortion, no vanishing point, no lens tilt, straight architectural framing with the wall filling the frame",
+            
+            negatives: [
+                "people", "text", "watermarks",
+                "artwork on the wall behind the sofa",
+                "modern electronics or screens",
+                "clutter",
+                "extra columns beyond the four specified",
+                "extra shelves beyond the four per bay specified",
+                "additional windows",
+                "curved or arched openings",
+                "perspective distortion",
+                "pale walls",
+                "boho styling",
+                "sage green",
+                "cream linen sofa",
+                "rattan",
+                "woven baskets",
+                "honey oak",
+                "American farmhouse styling",
+                "shiplap",
+                "chrome or polished chrome hardware",
+                "glossy plastic finishes",
+                "neon or saturated primary colors"
+            ],
+            
+            modelName: "gpt_image_2",
+            aspectRatio: "16:9",
+            
+            createdAt: now,
+            updatedAt: now,
+            
+            artDirection: "A private London club library at four o'clock in the afternoon. Cordovan leather, mahogany, brass with a proper patina, shelves stacked with books that have been read. Bottle-green velvet at the window, oxblood at the seat, warm lamp glow spilling over parchment plaster. The kind of room where a novel is halfway finished and a decanter is not far away.",
+            
+            lensAndCamera: "shot on a 50mm equivalent, sensor plane exactly parallel to the wall, no tilt, no shift, aperture around f/5.6, gentle natural falloff on the coffee table, rich warm tonal roll-off in the shadows",
+            
+            timeOfDayAndLight: "late-afternoon light muted through heavy velvet curtains, cool exterior daylight around 5200K softened and warmed to about 3200K by the emerald-shaded library lamps, no direct sun, warm pools of lamp light on the leather sofa and the coffee table books, deeper shadows in the return zones and under the beam header",
+            
+            moodDescriptors: "bookish, patinated, warm, aristocratic, unhurried, masculine but not heavy, English club, quietly literary",
+            
+            materialSpecificity: "cordovan leather with a visible break-in on the seat cushion, faint scratches on the arm rolls, deep tonal richness with subtle color variation across panels; mahogany with a hand-rubbed oil finish, dense straight grain with warm reddish undertones; antique brass with a warm patina, no polish, showing the fingerprints of time; bottle-green velvet with a soft nap that catches the light along the drape lines; leather-bound books with visible wear on the spines, gilt titling faded to a soft glow; parchment plaster with subtle cloud-like tonal variation, the palest warm cream against the darker accents",
+            
+            stylingProps: "on the shelves: books packed working-dense, mostly upright with a few horizontal stacks as risers, one small propped landscape oil, one propped small portrait, a pair of unlit brass candlesticks, one small terrestrial globe, a leather-bound reading portfolio lying flat, one hand-thrown cream matte ceramic vessel, a trailing ivy softening one corner. On the coffee table: a stack of three cloth-bound and leather-bound books with a small brass reading glass on top, a matte cream stoneware bowl, a small brass bell. On the sofa: one folded tartan wool throw draped over one arm, two pillows in deeper oxblood and warm parchment linen, both softly rumpled. A single sculptural fern or aspidistra in a matte brass planter on one side of the room beside the side table.",
+            
+            finishNotes: "heavy velvet curtain panels pooling on the floor with a deliberate gathered fall; the chesterfield's seat cushions softly indented as if just vacated; one book on the coffee table sitting a half inch off-parallel with the reading glass resting on its cover; the tartan throw folded once and slipping slightly off the arm; the emerald library lampshades casting warm pools of light onto the leather and the books; a faint softness of pipe-smoke light in the air suggesting an old room with a long memory",
+            
+            designerSignatureLine: "Render as if photographed for The World of Interiors or Architectural Digest UK — a private London library caught at four o'clock, warm lamps against a cool afternoon. Signed: a designer who believes a room without books cannot be trusted."
+        )
+    }
+    
     // Bundled read-only presets that ship with the app. Users can
     // duplicate any of these to make an editable copy. Ordered so
     // Boho Signature (the tested baseline) is first, followed by the
@@ -747,6 +842,7 @@ enum PhotorealPresetLibrary {
             japandiQuietMorning,
             parisianClassicMorningSalon,
             warmMinimalStudio,
+            gentlemansLibraryLondonClub,
             bohoMorningEditorial
         ]
     }
