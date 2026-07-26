@@ -15,6 +15,7 @@ struct WallPhotorealSection: View {
     
     @State private var presets: [PhotorealPreset] = PhotorealPresetLibrary.load()
     @State private var selectedPresetID: UUID = PhotorealPresetLibrary.bohoMorningEditorialSignature.id
+    @State private var renderSpeed: RenderSpeed = .draft
     @State private var history: [RenderHistoryRecord] = []
     @State private var previewResult: WallPhotorealRenderer.PreviewResult?
     @State private var isSnapshotting: Bool = false
@@ -74,6 +75,19 @@ struct WallPhotorealSection: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+            
+            // Speed picker — controls which image model is used.
+            HStack {
+                Text("Speed")
+                Spacer()
+                Picker("Speed", selection: $renderSpeed) {
+                    ForEach(RenderSpeed.allCases, id: \.self) { s in
+                        Text(s.label).tag(s)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 260)
             }
             
             // Render / preview button
@@ -273,6 +287,7 @@ struct WallPhotorealSection: View {
                 wall: wall,
                 defaults: defaults,
                 preset: preset,
+                speed: renderSpeed,
                 autoSnapshot: true
             )
             isSnapshotting = false
@@ -297,6 +312,7 @@ struct WallPhotorealSection: View {
                 wall: wall,
                 defaults: defaults,
                 preset: preview.preset,
+                speed: renderSpeed,
                 referenceImage: preview.referenceImage,
                 autoSnapshot: false,
                 note: ""

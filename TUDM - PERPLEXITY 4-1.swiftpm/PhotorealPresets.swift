@@ -24,6 +24,32 @@ import Foundation
 // A high-level tag for grouping presets in the picker. Optional so
 // older saved JSON still decodes. Free-form so users can invent new
 // families.
+// Render speed tier. Maps to a specific image model. Draft is fast
+// concept iteration, Standard is a balanced middle, Final is the
+// slowest and highest-quality model. Every preset can be rendered at
+// any tier without duplicating the preset.
+enum RenderSpeed: String, Codable, Hashable, CaseIterable {
+    case draft     // nano_banana_2, ~5-10s
+    case standard  // nano_banana_pro, ~15-20s
+    case final     // gpt_image_2, ~30-60s
+    
+    var modelName: String {
+        switch self {
+        case .draft:    return "nano_banana_2"
+        case .standard: return "nano_banana_pro"
+        case .final:    return "gpt_image_2"
+        }
+    }
+    
+    var label: String {
+        switch self {
+        case .draft:    return "Draft (fast)"
+        case .standard: return "Standard"
+        case .final:    return "Final (best)"
+        }
+    }
+}
+
 struct StyleFamily: Codable, Hashable, RawRepresentable {
     var rawValue: String
     init(rawValue: String) { self.rawValue = rawValue }

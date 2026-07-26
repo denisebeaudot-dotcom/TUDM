@@ -254,6 +254,30 @@ enum WallPhotorealRenderer {
         return image
     }
     
+    // MARK: Mask cache
+    //
+    // The structural mask only depends on the wall's chain and the room
+    // defaults. Cache by (wallID + structuralFingerprint) so repeated
+    // renders of the same wall skip the Core Graphics draw entirely.
+    
+    private static var maskCache: [String: UIImage] = [:]
+    
+    private static func maskCacheKey(wall: LockedWall, defaults: RoomDefaults) -> String {
+        var chain = ""
+        for seg in wall.segments {
+            chain += "\(seg.kind.rawValue):\(String(format: "%.3f", seg.resolvedWidth));"
+            if let op = seg.opening {
+                chain += "op:\(String(format: "%.2f", op.openingWidth))x\(String(format: "%.2f", op.openingHeight))@\(String(format: "%.2f", op.sillOrBottomAFF));"
+            }
+            if let sc = seg.shelfCount { chain += "sh:\(sc);" }
+        }
+        return "\(wall.id.uuidString)|c\(String(format: "%.2f", defaults.ceilingHeight))|b\(String(format: "%.2f", defaults.beamHeight))|bb\(String(format: "%.2f", defaults.baseboardHeight))|\(chain)"
+    }
+    
+    static func clearMaskCache() {
+        maskCache.removeAll()
+    }
+    
     // MARK: Structural mask snapshot (the img2img reference)
     //
     // Renders the wall as a flat-shaded dimensioned elevation using pure
@@ -269,6 +293,16 @@ enum WallPhotorealRenderer {
     static func snapshotStructuralMask(wall: LockedWall,
                                        defaults: RoomDefaults,
                                        size: CGSize = CGSize(width: 1600, height: 900)) -> UIImage? {
+        let key = maskCacheKey(wall: wall, defaults: defaults) + "|\(Int(size.width))x\(Int(size.height))"
+        if let hit = maskCache[key] { return hit }
+        let image = renderStructuralMask(wall: wall, defaults: defaults, size: size)
+        if let image = image { maskCache[key] = image }
+        return image
+    }
+    
+    private static func renderStructuralMask(wall: LockedWall,
+                                             defaults: RoomDefaults,
+                                             size: CGSize) -> UIImage? {
         // Palette — flat, high-contrast, easy for the model to read as zones.
         let bgColor       = UIColor(red: 0.961, green: 0.941, blue: 0.910, alpha: 1)
         let columnColor   = UIColor(red: 0.235, green: 0.216, blue: 0.196, alpha: 1)
@@ -514,6 +548,7 @@ enum WallPhotorealRenderer {
     static func previewRequest(wall: LockedWall,
                                defaults: RoomDefaults,
                                preset: PhotorealPreset,
+                               speed: RenderSpeed? = nil,
                                autoSnapshot: Bool = true) async -> PreviewResult? {
         // Structural mask (Core Graphics) is the img2img reference now.
         // Falls back to the RealityView snapshot only if the caller asks
@@ -525,6 +560,11 @@ enum WallPhotorealRenderer {
         
         let structural = WallStructuralSummary.generate(wall: wall, defaults: defaults)
         let fullPrompt = preset.compose(structural: structural)
+        
+        // Speed override wins over the preset's modelName so a single
+        // preset can be rendered in Draft, Standard, or Final without
+        // duplicating it.
+        let effectiveModel = speed?.modelName ?? preset.modelName
         
         let bundle = RenderRequestBundle(
             wallID: wall.id.uuidString,
@@ -538,7 +578,7 @@ enum WallPhotorealRenderer {
             fullPrompt: fullPrompt,
             referenceImageFilename: "",
             aspectRatio: preset.aspectRatio,
-            modelName: preset.modelName,
+            modelName: effectiveModel,
             createdAt: Date()
         )
         guard let promptData = bundle.toJSONData() else { return nil }
@@ -550,6 +590,35 @@ enum WallPhotorealRenderer {
             fullPrompt: fullPrompt,
             preset: preset
         )
+    }
+    
+    // MARK: Batch preview (parallel)
+    //
+    // Renders multiple presets against the same wall concurrently. Each
+    // preset's image-model call is independent, so wall-clock time for
+    // N presets is roughly the time of the slowest single call, not the
+    // sum. The mask is drawn once (cached) and reused across all presets.
+    
+    @MainActor
+    static func previewBatch(wall: LockedWall,
+                             defaults: RoomDefaults,
+                             presets: [PhotorealPreset],
+                             speed: RenderSpeed? = nil) async -> [PreviewResult] {
+        // Warm the mask cache once so every parallel task hits it.
+        _ = snapshotStructuralMask(wall: wall, defaults: defaults)
+        
+        return await withTaskGroup(of: PreviewResult?.self) { group in
+            for preset in presets {
+                group.addTask { @MainActor in
+                    await previewRequest(wall: wall, defaults: defaults, preset: preset, speed: speed)
+                }
+            }
+            var results: [PreviewResult] = []
+            for await result in group {
+                if let result = result { results.append(result) }
+            }
+            return results
+        }
     }
     
     // MARK: Package a render request
@@ -569,6 +638,7 @@ enum WallPhotorealRenderer {
     static func packageRequest(wall: LockedWall,
                                defaults: RoomDefaults,
                                preset: PhotorealPreset,
+                               speed: RenderSpeed? = nil,
                                referenceImage: UIImage? = nil,
                                autoSnapshot: Bool = true,
                                note: String = "") async -> PackageResult? {
@@ -592,6 +662,9 @@ enum WallPhotorealRenderer {
         let structural = WallStructuralSummary.generate(wall: wall, defaults: defaults)
         let fullPrompt = preset.compose(structural: structural)
         
+        // Speed override wins over the preset's modelName.
+        let effectiveModel = speed?.modelName ?? preset.modelName
+        
         let bundle = RenderRequestBundle(
             wallID: wallIDString,
             wallName: wall.name,
@@ -604,7 +677,7 @@ enum WallPhotorealRenderer {
             fullPrompt: fullPrompt,
             referenceImageFilename: referenceFilename,
             aspectRatio: preset.aspectRatio,
-            modelName: preset.modelName,
+            modelName: effectiveModel,
             createdAt: Date()
         )
         
@@ -636,6 +709,34 @@ enum WallPhotorealRenderer {
             promptJSONURL: promptURL,
             historyRecord: record
         )
+    }
+    
+    // MARK: Batch package (parallel)
+    //
+    // Same wall, multiple presets, all packaged concurrently. Each
+    // packageRequest writes its own reference PNG, prompt JSON, and
+    // history record.
+    
+    @MainActor
+    static func packageBatch(wall: LockedWall,
+                             defaults: RoomDefaults,
+                             presets: [PhotorealPreset],
+                             speed: RenderSpeed? = nil,
+                             note: String = "") async -> [PackageResult] {
+        _ = snapshotStructuralMask(wall: wall, defaults: defaults)
+        
+        return await withTaskGroup(of: PackageResult?.self) { group in
+            for preset in presets {
+                group.addTask { @MainActor in
+                    await packageRequest(wall: wall, defaults: defaults, preset: preset, speed: speed, note: note)
+                }
+            }
+            var results: [PackageResult] = []
+            for await result in group {
+                if let result = result { results.append(result) }
+            }
+            return results
+        }
     }
     
     static func importFinishedImage(_ image: UIImage,
