@@ -311,10 +311,14 @@ enum DNAGPatchGenerator {
     
     static func patchBlock(for audit: DNAGAudit) -> String {
         var lines: [String] = []
-        lines.append("NEXT RENDER PATCH — derived from DNAG \(audit.overallLabel)")
+        lines.append("SURGICAL REMEDY PATCH — derived from DNAG \(audit.overallLabel)")
         lines.append("")
-        lines.append("Keep the approved Style DNA. Keep every structural element")
-        lines.append("that passed. Apply ONLY the following corrections, in order:")
+        lines.append("Hard rules:")
+        lines.append("  - Keep the approved Style DNA unchanged.")
+        lines.append("  - Keep the Persona unchanged.")
+        lines.append("  - Keep every category that scored 7.5 or higher unchanged.")
+        lines.append("  - Correct only the failing categories, in priority order.")
+        lines.append("  - Re-audit automatically after the new render.")
         lines.append("")
         
         let remedies = audit.remedyCategories
@@ -325,13 +329,29 @@ enum DNAGPatchGenerator {
         
         for (i, s) in remedies.enumerated() {
             lines.append("\(priority(for: s))")
-            lines.append("Category: \(s.category.rawValue) — scored \(s.score)/10")
+            lines.append("Category: \(s.category.rawValue)  (scored \(s.score)/10, weight \(Int(s.category.weight)))")
+            lines.append("Frozen: keep every element in this category that already worked; only the failure below moves.")
             lines.append("Auditor notes: \(s.notes)")
-            lines.append("Directive: \(s.category.remedyHint)")
+            lines.append("Change: \(s.category.remedyHint)")
+            lines.append("Success criterion: \(s.category.rawValue) reaches 8+ on the next audit.")
             if i < remedies.count - 1 {
                 lines.append("")
             }
         }
+        
+        // Frozen list — every category that passed. The other half of
+        // the surgical patch: telling the renderer what NOT to touch.
+        let frozen = audit.scores.filter { !$0.needsRemedy }
+        if !frozen.isEmpty {
+            lines.append("")
+            lines.append("FROZEN CATEGORIES (do not touch on next render):")
+            for s in frozen {
+                lines.append("  - \(s.category.rawValue) — scored \(s.score)/10")
+            }
+        }
+        
+        lines.append("")
+        lines.append("Awaiting approval. Send 'Patch and regenerate' to apply this patch.")
         return lines.joined(separator: "\n")
     }
 }
