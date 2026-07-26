@@ -200,7 +200,7 @@ enum WallPhotorealRenderer {
     static func snapshotFurnishedView(wall: LockedWall,
                                       defaults: RoomDefaults,
                                       size: CGSize = CGSize(width: 1600, height: 900),
-                                      warmupTicks: Int = 8) async -> UIImage? {
+                                      warmupTicks: Int = 16) async -> UIImage? {
         // Find an active window scene to host the offscreen window in.
         let scene = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
