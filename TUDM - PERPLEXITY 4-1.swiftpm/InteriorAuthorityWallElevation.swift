@@ -341,6 +341,11 @@ struct WallElevationView: View {
             wallSpaceView(seg: seg, width: width, wallHeight: wallHeight)
         case .wall:
             wallView(seg: seg, width: width, wallHeight: wallHeight)
+        case .alcoveOpening:
+            // Step 7 — station range claimed by a room-level alcove. Draw as
+            // a neutral placeholder band on the elevation; the alcove
+            // renderer (Step 7b) paints the real silhouette in a later pass.
+            filledBar(width: width, height: wallHeight, fill: Color.orange.opacity(0.08), stroke: Color.orange.opacity(0.4), label: showsLabels ? (seg.label.isEmpty ? "AL" : seg.label) : nil)
         }
     }
     

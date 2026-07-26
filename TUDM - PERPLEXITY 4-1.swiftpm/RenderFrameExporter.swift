@@ -374,6 +374,12 @@ struct WallElevationFrameView: View {
             openingFrame(seg: seg, width: width, wallH: wallH, scale: scale)
         case .wallSpace, .returnZone, .baseboard, .crown, .trim, .casing:
             Color.clear.frame(width: width, height: wallH)
+        case .alcoveOpening:
+            // Step 7 — alcove-owned station range on this wall. The alcove
+            // itself paints its columns/back at room-level, so the wall
+            // frame leaves this span empty (structural silhouette lives
+            // on the alcove, not the wall segment).
+            Color.clear.frame(width: width, height: wallH)
         }
     }
     
@@ -562,6 +568,10 @@ struct WallElevationMaskView: View {
         case .windowUnit, .door, .opening:
             openingMask(seg: seg, width: width, wallH: wallH, scale: scale)
         case .wallSpace, .returnZone, .baseboard, .crown, .trim, .casing:
+            Color.clear.frame(width: width, height: wallH)
+        case .alcoveOpening:
+            // Step 7 — alcove-owned station range. Mask is transparent here;
+            // the alcove renderer paints its own silhouette in a later pass.
             Color.clear.frame(width: width, height: wallH)
         }
     }

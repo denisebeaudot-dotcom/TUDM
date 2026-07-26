@@ -132,6 +132,61 @@ final class InteriorAuthorityStore {
         save()
     }
     
+    // MARK: - Alcoves (Step 7)
+    
+    func addAlcove(projectID: UUID, roomID: UUID, alcove: RoomAlcove) {
+        guard
+            let projectIndex = projects.firstIndex(where: { $0.id == projectID }),
+            let roomIndex = projects[projectIndex].rooms.firstIndex(where: { $0.id == roomID })
+        else { return }
+        
+        projects[projectIndex].rooms[roomIndex].alcoves.append(alcove)
+        save()
+    }
+    
+    func updateAlcove(projectID: UUID, roomID: UUID, alcove: RoomAlcove) {
+        guard
+            let projectIndex = projects.firstIndex(where: { $0.id == projectID }),
+            let roomIndex = projects[projectIndex].rooms.firstIndex(where: { $0.id == roomID }),
+            let alcoveIndex = projects[projectIndex].rooms[roomIndex].alcoves.firstIndex(where: { $0.id == alcove.id })
+        else { return }
+        
+        // Immutability contract: a locked alcove refuses in-place updates. Callers
+        // that legitimately need to edit a locked alcove must clear isLocked first.
+        if projects[projectIndex].rooms[roomIndex].alcoves[alcoveIndex].isLocked && alcove.isLocked {
+            print("updateAlcove ignored: alcove \(alcove.id) is locked. Unlock before editing.")
+            return
+        }
+        
+        projects[projectIndex].rooms[roomIndex].alcoves[alcoveIndex] = alcove
+        save()
+    }
+    
+    func deleteAlcoves(projectID: UUID, roomID: UUID, at offsets: IndexSet) {
+        guard
+            let projectIndex = projects.firstIndex(where: { $0.id == projectID }),
+            let roomIndex = projects[projectIndex].rooms.firstIndex(where: { $0.id == roomID })
+        else { return }
+        
+        projects[projectIndex].rooms[roomIndex].alcoves.remove(atOffsets: offsets)
+        save()
+    }
+    
+    /// Convenience lookup: return the alcove-id-keyed map for a given room so
+    /// AlcoveValidation and wall-side rendering can resolve refs quickly.
+    func alcoveLookup(projectID: UUID, roomID: UUID) -> [UUID: RoomAlcove] {
+        guard
+            let projectIndex = projects.firstIndex(where: { $0.id == projectID }),
+            let roomIndex = projects[projectIndex].rooms.firstIndex(where: { $0.id == roomID })
+        else { return [:] }
+        
+        var result: [UUID: RoomAlcove] = [:]
+        for alcove in projects[projectIndex].rooms[roomIndex].alcoves {
+            result[alcove.id] = alcove
+        }
+        return result
+    }
+    
     // MARK: - Beams
     
     func addBeam(projectID: UUID, roomID: UUID, beam: RoomBeam) {

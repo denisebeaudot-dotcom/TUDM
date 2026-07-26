@@ -34,6 +34,9 @@ struct Room: Identifiable, Codable, Hashable {
     var defaults: RoomDefaults
     var wallSpecs: [WallSpec]
     var beams: [RoomBeam]
+    /// Step 7 — room-level corner alcoves (wood stove, corner fireplace, nook, bar).
+    /// Alcoves are first-class room children; walls reference them via .alcoveOpening segments.
+    var alcoves: [RoomAlcove]
     
     init(
         id: UUID = UUID(),
@@ -41,7 +44,8 @@ struct Room: Identifiable, Codable, Hashable {
         notes: String = "",
         defaults: RoomDefaults = .rgrstDefaults,
         wallSpecs: [WallSpec] = [],
-        beams: [RoomBeam] = []
+        beams: [RoomBeam] = [],
+        alcoves: [RoomAlcove] = []
     ) {
         self.id = id
         self.name = name
@@ -49,10 +53,11 @@ struct Room: Identifiable, Codable, Hashable {
         self.defaults = defaults
         self.wallSpecs = wallSpecs
         self.beams = beams
+        self.alcoves = alcoves
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, notes, defaults, wallSpecs, beams
+        case id, name, notes, defaults, wallSpecs, beams, alcoves
     }
     
     init(from decoder: Decoder) throws {
@@ -63,6 +68,7 @@ struct Room: Identifiable, Codable, Hashable {
         self.defaults = try c.decodeIfPresent(RoomDefaults.self, forKey: .defaults) ?? .rgrstDefaults
         self.wallSpecs = try c.decodeIfPresent([WallSpec].self, forKey: .wallSpecs) ?? []
         self.beams = try c.decodeIfPresent([RoomBeam].self, forKey: .beams) ?? []
+        self.alcoves = try c.decodeIfPresent([RoomAlcove].self, forKey: .alcoves) ?? []
     }
 }
 
@@ -190,6 +196,9 @@ enum SegmentKind: String, CaseIterable, Codable, Hashable {
     case windowUnit = "Window Unit"
     case door = "Door"
     case opening = "Opening"
+    // Step 7 — a station range on this wall is claimed by a room-level alcove.
+    // The alcove itself lives on Room.alcoves and is referenced via WallSegment.alcoveRef.
+    case alcoveOpening = "Alcove Opening"
 }
 
 // MARK: - Openings
@@ -630,6 +639,9 @@ struct WallSegment: Identifiable, Codable, Hashable {
     var cathedralPeakHeight: Double? // inches AFF; only when wallVariant == .cathedral
     var cathedralPeakOffset: Double? // inches from wall left edge to peak; only when .cathedral
     var archRise: Double?            // inches; only when wallVariant == .archedPartition
+    /// Step 7 — when kind == .alcoveOpening, this ties the segment's station
+    /// range to a room-level RoomAlcove. The alcove itself lives on Room.alcoves.
+    var alcoveRef: UUID?
     
     init(
         id: UUID = UUID(),
@@ -649,7 +661,8 @@ struct WallSegment: Identifiable, Codable, Hashable {
         kneeWallHeight: Double? = nil,
         cathedralPeakHeight: Double? = nil,
         cathedralPeakOffset: Double? = nil,
-        archRise: Double? = nil
+        archRise: Double? = nil,
+        alcoveRef: UUID? = nil
     ) {
         self.id = id
         self.label = label
@@ -669,12 +682,14 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.cathedralPeakHeight = cathedralPeakHeight
         self.cathedralPeakOffset = cathedralPeakOffset
         self.archRise = archRise
+        self.alcoveRef = alcoveRef
     }
     
     enum CodingKeys: String, CodingKey {
         case id, label, width, kind, note
         case opening, shelfCount, shelfDepth, shelfThickness, shelfSpacedEvenly, isFloorToCeiling, isSharedCorner, beamPosition
         case wallVariant, kneeWallHeight, cathedralPeakHeight, cathedralPeakOffset, archRise
+        case alcoveRef
     }
     
     init(from decoder: Decoder) throws {
@@ -697,6 +712,7 @@ struct WallSegment: Identifiable, Codable, Hashable {
         self.cathedralPeakHeight = try c.decodeIfPresent(Double.self, forKey: .cathedralPeakHeight)
         self.cathedralPeakOffset = try c.decodeIfPresent(Double.self, forKey: .cathedralPeakOffset)
         self.archRise = try c.decodeIfPresent(Double.self, forKey: .archRise)
+        self.alcoveRef = try c.decodeIfPresent(UUID.self, forKey: .alcoveRef)
     }
     
     var resolvedWidth: Double {

@@ -858,6 +858,7 @@ struct WallFormView: View {
         case .casing: prefix = "CS"
         case .trim: prefix = "TR"
         case .returnZone: prefix = "RZ"
+        case .alcoveOpening: prefix = "AL"
         }
         return "\(prefix)\(index + 1)"
     }
@@ -876,6 +877,7 @@ struct WallFormView: View {
         case .crown: return d.crownHeight
         case .casing, .trim: return 4
         case .wallSpace, .wall, .returnZone: return 24
+        case .alcoveOpening: return 24
         }
     }
     
@@ -1107,6 +1109,13 @@ struct WallFormView: View {
                     wallSpaceAboveUnit: max(d.ceilingHeight - openingH - d.crownHeight, 0)
                 )
             }
+            
+        case .alcoveOpening:
+            // Step 7 — alcove-owned station range. The alcove itself owns
+            // structural data (columns, back, payload); the wall segment only
+            // records that this station range is claimed. Width defaults are
+            // populated by the alcove editor, not here.
+            if segment.width <= 0 { segment.width = 24 }
         }
     }
     
