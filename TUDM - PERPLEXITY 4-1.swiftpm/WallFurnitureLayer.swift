@@ -362,8 +362,11 @@ enum WallFurnitureSceneBuilder {
         // We convert plan coords (wall-local from left edge) to wall-centered X.
         
         func wx(_ planX: Double) -> Double {
-            // planX is measured from wall left edge (0 to wallWidth)
-            return planX - wallWidth / 2
+            // Plan coordinates are already wall-centered (WallFurniturePlan.derive
+            // seeds its cursor at -wallWidth/2, so every centerX is in the same
+            // wall-centered frame the RealityKit scene uses). No shift needed.
+            _ = wallWidth
+            return planX
         }
         
         // Rug (draw first so it sits under everything)
