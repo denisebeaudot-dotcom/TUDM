@@ -14,7 +14,7 @@ struct WallPhotorealSection: View {
     let defaults: RoomDefaults
     
     @State private var presets: [PhotorealPreset] = PhotorealPresetLibrary.load()
-    @State private var selectedPresetID: UUID = PhotorealPresetLibrary.bohoMorningEditorial.id
+    @State private var selectedPresetID: UUID = PhotorealPresetLibrary.bohoMorningEditorialSignature.id
     @State private var history: [RenderHistoryRecord] = []
     @State private var previewResult: WallPhotorealRenderer.PreviewResult?
     @State private var isSnapshotting: Bool = false
@@ -26,33 +26,49 @@ struct WallPhotorealSection: View {
     @State private var statusMessage: String = ""
     
     private var selectedPreset: PhotorealPreset {
-        presets.first(where: { $0.id == selectedPresetID }) ?? PhotorealPresetLibrary.bohoMorningEditorial
+        presets.first(where: { $0.id == selectedPresetID }) ?? PhotorealPresetLibrary.bohoMorningEditorialSignature
     }
     
     var body: some View {
         Section("Photoreal Renders") {
-            // Preset picker
+            // Preset picker (grouped by style family)
             HStack {
-                Text("Preset")
+                Text("Style")
                 Spacer()
                 Menu {
-                    ForEach(presets) { p in
-                        Button {
-                            selectedPresetID = p.id
-                        } label: {
-                            HStack {
-                                Text(p.name)
-                                if p.id == selectedPresetID {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
+                    // Group presets by family. Presets without a family
+                    // fall into an Other section.
+                    let grouped = Dictionary(grouping: presets, by: { $0.styleFamily?.rawValue ?? "Other" })
+                    let familyOrder = grouped.keys.sorted()
+                    ForEach(familyOrder, id: \.self) { family in
+                        Section(family) {
+                            ForEach(grouped[family] ?? []) { p in
+                                Button {
+                                    selectedPresetID = p.id
+                                    previewResult = nil
+                                } label: {
+                                    HStack {
+                                        Text(p.name)
+                                        if p.id == selectedPresetID {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(selectedPreset.name)
-                            .foregroundStyle(.primary)
+                        VStack(alignment: .trailing, spacing: 0) {
+                            Text(selectedPreset.name)
+                                .foregroundStyle(.primary)
+                            if let fam = selectedPreset.styleFamily?.rawValue {
+                                Text(fam)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -112,6 +128,39 @@ struct WallPhotorealSection: View {
                     Text(preview.preset.name + " v\(preview.preset.version)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    
+                    // Prompt inspector: what is actually being sent
+                    DisclosureGroup("Structural Summary") {
+                        Text(preview.structuralSummary)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+                    }
+                    .font(.caption)
+                    
+                    DisclosureGroup("Full Composed Prompt") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(preview.fullPrompt)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+                            Button {
+                                UIPasteboard.general.string = preview.fullPrompt
+                                statusMessage = "Prompt copied to clipboard."
+                            } label: {
+                                Label("Copy Prompt", systemImage: "doc.on.doc")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    .font(.caption)
                     
                     HStack {
                         Button {
