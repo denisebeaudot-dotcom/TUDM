@@ -37,15 +37,25 @@ struct AlcovePlanThumbnail: View {
             let originY = padding + (availH - footBPixels) / 2
             
             ZStack(alignment: .topLeading) {
-                // Platform footprint
-                Rectangle()
-                    .fill(Color.orange.opacity(0.14))
-                    .overlay(
-                        Rectangle()
-                            .stroke(Color.orange.opacity(0.6), lineWidth: 1)
-                    )
-                    .frame(width: footAPixels, height: footBPixels)
-                    .offset(x: originX, y: originY)
+                // Platform footprint. Shape follows alcove.platform.shape so a
+                // convex curved front reads as a curve bulging out into the room,
+                // and a concave front as a curve indenting toward the shared
+                // corner. Chamfered draws a straight diagonal front.
+                platformPath(
+                    shape: alcove.platform.shape,
+                    footAPixels: footAPixels,
+                    footBPixels: footBPixels
+                )
+                .fill(Color.orange.opacity(0.14))
+                .offset(x: originX, y: originY)
+                
+                platformPath(
+                    shape: alcove.platform.shape,
+                    footAPixels: footAPixels,
+                    footBPixels: footBPixels
+                )
+                .stroke(Color.orange.opacity(0.6), lineWidth: 1)
+                .offset(x: originX, y: originY)
                 
                 // Column A sits at the far-along-A corner (inboard end on wall A).
                 // In alcove coordinates that's the (footA, 0) corner.
@@ -131,6 +141,77 @@ struct AlcovePlanThumbnail: View {
         case .wood: return Color.brown
         case .tile: return Color.teal
         case .other: return Color.secondary
+        }
+    }
+    
+    /// Return the SwiftUI Path for the platform footprint. The platform's
+    /// two "wall" edges run along the wallA and wallB axes, meeting at the
+    /// shared corner (0, 0). The front edge runs diagonally from the far end
+    /// of wallA (footAPixels, 0) to the far end of wallB (0, footBPixels).
+    /// That front edge is what curves depending on shape:
+    ///  - flatRectangular: two straight edges forming a full rectangle,
+    ///    front is a straight line from (footAPixels, 0) to (0, footBPixels)
+    ///    inside the rectangle — but rectangular alcoves have no diagonal;
+    ///    they use the full rectangle. Represented as the rectangle.
+    ///  - convexCurvedFront: front arcs OUT into the room (away from origin)
+    ///  - concaveCurvedFront: front arcs IN toward the origin
+    ///  - chamferedCorners: straight diagonal front, forming a triangular
+    ///    footprint touching wallA and wallB with a hypotenuse across
+    private func platformPath(
+        shape: PlatformShape,
+        footAPixels: Double,
+        footBPixels: Double
+    ) -> Path {
+        var path = Path()
+        
+        switch shape {
+        case .flatRectangular:
+            path.addRect(CGRect(x: 0, y: 0, width: footAPixels, height: footBPixels))
+            return path
+            
+        case .chamferedCorners:
+            // Triangular platform: (0,0) → (footAPixels, 0) → (0, footBPixels)
+            path.move(to: CGPoint(x: 0, y: 0))
+            path.addLine(to: CGPoint(x: footAPixels, y: 0))
+            path.addLine(to: CGPoint(x: 0, y: footBPixels))
+            path.closeSubpath()
+            return path
+            
+        case .convexCurvedFront:
+            // Wall edges + curved front bulging OUT to the room (positive both
+            // directions, i.e. control point outside the straight chord).
+            path.move(to: CGPoint(x: 0, y: 0))
+            path.addLine(to: CGPoint(x: footAPixels, y: 0))
+            let chordMidX = footAPixels / 2
+            let chordMidY = footBPixels / 2
+            let convexCtrl = CGPoint(
+                x: chordMidX + footAPixels * 0.28,
+                y: chordMidY + footBPixels * 0.28
+            )
+            path.addQuadCurve(
+                to: CGPoint(x: 0, y: footBPixels),
+                control: convexCtrl
+            )
+            path.closeSubpath()
+            return path
+            
+        case .concaveCurvedFront:
+            // Wall edges + curved front indenting TOWARD the shared corner
+            // (control point on the origin side of the chord).
+            path.move(to: CGPoint(x: 0, y: 0))
+            path.addLine(to: CGPoint(x: footAPixels, y: 0))
+            let chordMidX = footAPixels / 2
+            let chordMidY = footBPixels / 2
+            let concaveCtrl = CGPoint(
+                x: chordMidX - footAPixels * 0.18,
+                y: chordMidY - footBPixels * 0.18
+            )
+            path.addQuadCurve(
+                to: CGPoint(x: 0, y: footBPixels),
+                control: concaveCtrl
+            )
+            path.closeSubpath()
+            return path
         }
     }
     
