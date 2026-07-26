@@ -188,17 +188,78 @@ enum WallPhotorealRenderer {
         saveHistory(records, wallID: wallID)
     }
     
+    // MARK: Snapshot the Furnished view
+    //
+    // Uses UIGraphicsImageRenderer + drawHierarchy(afterScreenUpdates:true)
+    // on a temporary UIHostingController hosted in an offscreen UIWindow.
+    // The window must be attached to a scene and made key so RealityKit
+    // will actually render a frame; we then let the runloop tick a few
+    // times to let RealityView build its scene and composite one frame.
+    
+    @MainActor
+    static func snapshotFurnishedView(wall: LockedWall,
+                                      defaults: RoomDefaults,
+                                      size: CGSize = CGSize(width: 1600, height: 900),
+                                      warmupTicks: Int = 8) async -> UIImage? {
+        // Find an active window scene to host the offscreen window in.
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        guard let windowScene = scene else { return nil }
+        
+        // Offscreen window at the requested render size.
+        let offscreenWindow = UIWindow(windowScene: windowScene)
+        offscreenWindow.frame = CGRect(origin: .zero, size: size)
+        offscreenWindow.windowLevel = .normal - 1
+        offscreenWindow.isHidden = false
+        offscreenWindow.alpha = 0.01 // effectively invisible but composited
+        
+        // Host the Furnished view. Force fixed frame so layout matches.
+        let host = UIHostingController(
+            rootView: WallFurnitureRealityPreview(wall: wall, defaults: defaults)
+                .frame(width: size.width, height: size.height)
+                .background(Color(white: 0.95))
+        )
+        host.view.frame = CGRect(origin: .zero, size: size)
+        host.view.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
+        offscreenWindow.rootViewController = host
+        offscreenWindow.makeKeyAndVisible()
+        
+        // Force layout, then let the runloop tick so RealityView can
+        // build the scene, allocate its Metal drawable, and render.
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        
+        for _ in 0..<warmupTicks {
+            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms per tick
+            host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
+        }
+        
+        // Snapshot the composited view hierarchy.
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2.0
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let image = renderer.image { _ in
+            host.view.drawHierarchy(in: CGRect(origin: .zero, size: size),
+                                    afterScreenUpdates: true)
+        }
+        
+        // Tear down the offscreen window.
+        offscreenWindow.isHidden = true
+        offscreenWindow.rootViewController = nil
+        
+        return image
+    }
+    
     // MARK: Package a render request
     //
-    // On iPad Playgrounds we cannot reliably snapshot a RealityView
-    // offscreen (ImageRenderer does not capture GPU-backed content).
-    // The user provides the reference PNG themselves: they take the
-    // Furnished view face-on, tap Export Render Frame to Photos, and
-    // then pass that image into the render request.
-    //
-    // If no reference image is supplied, the app writes the prompt
-    // JSON only and expects the user to attach the exported image
-    // when sharing to the session.
+    // Attempts to auto-snapshot the Furnished view via an offscreen
+    // UIHostingController + UIGraphicsImageRenderer. If the snapshot
+    // fails (e.g. RealityKit did not composite in time), the caller
+    // may still supply a manually-exported PNG via referenceImage.
     
     struct PackageResult {
         var referenceImageURL: URL?
@@ -211,16 +272,21 @@ enum WallPhotorealRenderer {
                                defaults: RoomDefaults,
                                preset: PhotorealPreset,
                                referenceImage: UIImage? = nil,
-                               note: String = "") -> PackageResult? {
+                               autoSnapshot: Bool = true,
+                               note: String = "") async -> PackageResult? {
         let wallIDString = wall.id.uuidString
         let folder = wallFolder(wallID: wallIDString)
         let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
         
-        // Reference image is optional. If supplied, write it. Otherwise
-        // record the intended filename and let the user attach later.
+        // Resolve a reference image: explicit override, else auto-snapshot.
+        var resolvedImage = referenceImage
+        if resolvedImage == nil, autoSnapshot {
+            resolvedImage = await snapshotFurnishedView(wall: wall, defaults: defaults)
+        }
+        
         let referenceFilename = "reference_" + stamp + ".png"
         var referenceURL: URL? = nil
-        if let img = referenceImage, let data = img.pngData() {
+        if let img = resolvedImage, let data = img.pngData() {
             referenceURL = folder.appendingPathComponent(referenceFilename)
             try? data.write(to: referenceURL!, options: .atomic)
         }

@@ -141,19 +141,24 @@ struct WallPhotorealSection: View {
     }
     
     private func packageAndShare() {
-        statusMessage = "Packaging render request..."
+        statusMessage = "Snapshotting Furnished view and packaging prompt..."
         Task { @MainActor in
             let preset = selectedPreset
-            if let result = WallPhotorealRenderer.packageRequest(
+            if let result = await WallPhotorealRenderer.packageRequest(
                 wall: wall,
                 defaults: defaults,
                 preset: preset,
                 referenceImage: nil,
+                autoSnapshot: true,
                 note: ""
             ) {
                 packageResult = result
                 history = WallPhotorealRenderer.loadHistory(wallID: wall.id.uuidString)
-                statusMessage = "Ready. Prompt JSON is being shared. Also export the Furnished view via Export Render Frame to Photos and attach both to your Perplexity session. Then Import the finished PNG below."
+                if result.referenceImageURL != nil {
+                    statusMessage = "Ready. Reference PNG and prompt JSON are being shared. Send both to your Perplexity session, then Import the finished PNG below."
+                } else {
+                    statusMessage = "Prompt packaged but auto-snapshot failed. Export the Furnished view manually via Export Render Frame to Photos, then attach both to your session."
+                }
                 showShare = true
             } else {
                 statusMessage = "Could not package the render. Try again."
