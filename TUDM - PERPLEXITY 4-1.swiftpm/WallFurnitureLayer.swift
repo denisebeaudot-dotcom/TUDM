@@ -691,6 +691,7 @@ struct WallFurnitureRealityPreview: View {
     @State private var faceOnTrigger: Int = 0
     
     var body: some View {
+        let plan = WallFurniturePlan.derive(from: wall, defaults: defaults)
         VStack(spacing: 8) {
             HStack {
                 Toggle(isOn: $showFurniture) {
@@ -705,6 +706,17 @@ struct WallFurnitureRealityPreview: View {
                         .font(.callout)
                 }
             }
+            .padding(.horizontal, 4)
+            
+            // Debug row: shows the derived numeric plan so we can see the
+            // centerlines the RealityKit scene is using.
+            HStack(spacing: 12) {
+                Text("Wall W: " + String(format: "%.2f", wall.totalWidth))
+                Text("Sofa X: " + (plan.sofa.map { String(format: "%.2f", $0.centerX) } ?? "nil"))
+                Text("Windows: \(plan.blinds.count)")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
             
             RealityView { content in
