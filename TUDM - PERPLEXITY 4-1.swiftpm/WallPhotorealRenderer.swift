@@ -274,6 +274,15 @@ enum WallPhotorealRenderer {
         return "\(wall.id.uuidString)|c\(String(format: "%.2f", defaults.ceilingHeight))|b\(String(format: "%.2f", defaults.beamHeight))|bb\(String(format: "%.2f", defaults.baseboardHeight))|\(chain)"
     }
     
+    // Mask resolution per speed tier. Draft/Standard use a smaller mask
+    // to reduce img2img upload + attention cost; Final uses the full mask.
+    private static func maskSize(for speed: RenderSpeed?) -> CGSize {
+        switch speed ?? .final {
+        case .draft, .standard: return CGSize(width: 1024, height: 576)
+        case .final:            return CGSize(width: 1600, height: 900)
+        }
+    }
+    
     static func clearMaskCache() {
         maskCache.removeAll()
     }
@@ -554,12 +563,16 @@ enum WallPhotorealRenderer {
         // Falls back to the RealityView snapshot only if the caller asks
         // for it explicitly by setting autoSnapshot to false and passing
         // a manual referenceImage via packageRequest.
+        // Non-final tiers use a smaller mask (2.4x less pixel data through
+        // the img2img channel) since it's a flat schematic anyway.
+        let maskSize = maskSize(for: speed)
         let snapshot: UIImage? = autoSnapshot
-            ? snapshotStructuralMask(wall: wall, defaults: defaults)
+            ? snapshotStructuralMask(wall: wall, defaults: defaults, size: maskSize)
             : nil
         
         let structural = WallStructuralSummary.generate(wall: wall, defaults: defaults)
-        let fullPrompt = preset.compose(structural: structural)
+        let detail = speed?.promptDetail ?? .full
+        let fullPrompt = preset.compose(structural: structural, detail: detail)
         
         // Speed override wins over the preset's modelName so a single
         // preset can be rendered in Draft, Standard, or Final without
@@ -647,9 +660,10 @@ enum WallPhotorealRenderer {
         let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
         
         // Resolve a reference image: explicit override, else auto-snapshot.
+        let maskSize = maskSize(for: speed)
         var resolvedImage = referenceImage
         if resolvedImage == nil, autoSnapshot {
-            resolvedImage = snapshotStructuralMask(wall: wall, defaults: defaults)
+            resolvedImage = snapshotStructuralMask(wall: wall, defaults: defaults, size: maskSize)
         }
         
         let referenceFilename = "reference_" + stamp + ".png"
@@ -660,7 +674,8 @@ enum WallPhotorealRenderer {
         }
         
         let structural = WallStructuralSummary.generate(wall: wall, defaults: defaults)
-        let fullPrompt = preset.compose(structural: structural)
+        let detail = speed?.promptDetail ?? .full
+        let fullPrompt = preset.compose(structural: structural, detail: detail)
         
         // Speed override wins over the preset's modelName.
         let effectiveModel = speed?.modelName ?? preset.modelName

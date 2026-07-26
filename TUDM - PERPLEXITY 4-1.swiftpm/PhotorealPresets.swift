@@ -29,9 +29,9 @@ import Foundation
 // slowest and highest-quality model. Every preset can be rendered at
 // any tier without duplicating the preset.
 enum RenderSpeed: String, Codable, Hashable, CaseIterable {
-    case draft     // nano_banana_2, ~5-10s
-    case standard  // nano_banana_pro, ~15-20s
-    case final     // gpt_image_2, ~30-60s
+    case draft     // nano_banana_2,  ~14s   fast concept
+    case standard  // nano_banana_pro, ~27s   balanced
+    case final     // gpt_image_2,     ~90s   editorial
     
     var modelName: String {
         switch self {
@@ -43,11 +43,27 @@ enum RenderSpeed: String, Codable, Hashable, CaseIterable {
     
     var label: String {
         switch self {
-        case .draft:    return "Draft (fast)"
-        case .standard: return "Standard"
-        case .final:    return "Final (best)"
+        case .draft:    return "Draft \u{2022} 14s"
+        case .standard: return "Standard \u{2022} 27s"
+        case .final:    return "Final \u{2022} 90s"
         }
     }
+    
+    // How much to compact the prompt. Draft strips optional embellishment
+    // to shave inference time; Final sends the full brief.
+    var promptDetail: PromptDetail {
+        switch self {
+        case .draft:    return .compact
+        case .standard: return .standard
+        case .final:    return .full
+        }
+    }
+}
+
+enum PromptDetail {
+    case compact   // structural + palette + one-line staging only
+    case standard  // + shelf staging + soft staging
+    case full      // full designer language
 }
 
 struct StyleFamily: Codable, Hashable, RawRepresentable {
@@ -167,10 +183,60 @@ struct PhotorealPreset: Codable, Hashable, Identifiable {
     
     // MARK: Compose
     
-    // Compose the full prompt string. Structural details are injected
-    // separately by WallPhotorealRenderer from the wall's own data —
-    // this preset only supplies styling language.
-    func compose(structural: String) -> String {
+    // Detail-tiered composer. Draft strips optional designer blocks and
+    // shortens boilerplate to shave inference time on the fast model.
+    // Old callers that used compose(structural:) get .full by default.
+    func compose(structural: String, detail: PromptDetail = .full) -> String {
+        switch detail {
+        case .compact:  return composeCompact(structural: structural)
+        case .standard: return composeStandard(structural: structural)
+        case .full:     return composeFull(structural: structural)
+        }
+    }
+    
+    // Compact prompt: mask-blueprint + palette + one-line staging only.
+    // Roughly a third of the full length. Best paired with .draft speed.
+    private func composeCompact(structural: String) -> String {
+        let negativesText = negatives.isEmpty ? "" : " Avoid: \(negatives.joined(separator: ", "))."
+        return """
+        Photoreal architectural elevation, \(aestheticLine).
+        
+        REFERENCE IS A DIMENSIONED ELEVATION MASK. Match every zone width, column position, shelf edge, window mullion, and furniture silhouette exactly. Replace flat colors with the palette below. Face-on view, wall edge-to-edge, first column flush left, last column flush right, nothing beyond outer columns.
+        
+        Structure: \(structural)
+        
+        Palette: wall \(wallPlasterHex), return accent \(wallReturnAccentHex), casing \(casingWhiteHex), beam \(beamWoodHex), floor \(floorWoodHex), sofa \(upholsteryHex), metal \(metalHardwareHex).
+        
+        Materials: sofa \(upholsteryMaterial); curtains \(curtainMaterial); blinds \(blindMaterial); floor \(floorMaterial); walls \(wallMaterial); shelves \(shelfMaterial); coffee table \(coffeeTableMaterial); lamps \(lampShadeMaterial).
+        
+        Bright even lighting, every detail readable, no dim shadows.\(negativesText)
+        """
+    }
+    
+    // Standard prompt: compact + shelf/soft staging, still no designer prose.
+    private func composeStandard(structural: String) -> String {
+        let negativesText = negatives.isEmpty ? "" : " Avoid: \(negatives.joined(separator: ", "))."
+        return """
+        Photoreal architectural interior render, \(cameraLine). \(aestheticLine). \(atmosphereLine).
+        
+        REFERENCE IS A DIMENSIONED ELEVATION MASK, not a photograph. Match every zone width, column position, shelf edge, window mullion, and furniture silhouette exactly. Do not resize, center, or balance any zone.
+        
+        FRAMING: face-on, wall edge-to-edge, first column flush left, last column flush right, nothing beyond outer columns.
+        
+        Structure: \(structural)
+        
+        Palette (hex): wall \(wallPlasterHex), return accent \(wallReturnAccentHex), casing \(casingWhiteHex), beam \(beamWoodHex), floor \(floorWoodHex), sofa \(upholsteryHex), pillow \(pillowAccentHex), metal \(metalHardwareHex).
+        
+        Materials: sofa \(upholsteryMaterial); curtains \(curtainMaterial); blinds \(blindMaterial); floor \(floorMaterial); walls \(wallMaterial); shelves \(shelfMaterial); coffee table \(coffeeTableMaterial); side tables \(sideTableMaterial); lamps \(lampShadeMaterial).
+        
+        Staging: \(shelfStaging) \(plantStaging) \(artStaging)
+        
+        Quality: \(qualityFlags).\(negativesText)
+        """
+    }
+    
+    // Full designer-language prompt. Original behavior.
+    private func composeFull(structural: String) -> String {
         let negativesText = negatives.joined(separator: ", ")
         let negativesLine = negatives.isEmpty ? "" : " Avoid: \(negativesText). "
         
