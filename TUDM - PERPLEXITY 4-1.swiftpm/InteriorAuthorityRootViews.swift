@@ -26,6 +26,41 @@ struct InteriorAuthorityRootView: View {
     var body: some View {
         NavigationStack {
             List {
+                // MARK: Projects (top)
+                Section("Projects") {
+                    if store.projects.isEmpty {
+                        ContentUnavailableView(
+                            "No Projects",
+                            systemImage: "folder",
+                            description: Text("Create your first project to begin.")
+                        )
+                    } else {
+                        ForEach(store.projects) { project in
+                            NavigationLink(value: InteriorRoute.project(project.id)) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(project.name)
+                                        .font(.headline)
+                                    
+                                    if !project.clientName.trimmed.isEmpty {
+                                        Text(project.clientName)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    if !project.location.trimmed.isEmpty {
+                                        Text(project.location)
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                        .onDelete(perform: store.deleteProjects)
+                    }
+                }
+                
+                // MARK: Housekeeping (bottom)
                 Section("Manifest Sync") {
                     if let path = syncFolder.displayPath {
                         VStack(alignment: .leading, spacing: 4) {
@@ -80,37 +115,6 @@ struct InteriorAuthorityRootView: View {
                     Text("Build a Style DNA and Persona from picker catalogs, run the compatibility guardrail, and export the PART B prompt block ready to paste into the ChatGPT recipe.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-                
-                if store.projects.isEmpty {
-                    ContentUnavailableView(
-                        "No Projects",
-                        systemImage: "folder",
-                        description: Text("Create your first project to begin.")
-                    )
-                } else {
-                    ForEach(store.projects) { project in
-                        NavigationLink(value: InteriorRoute.project(project.id)) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(project.name)
-                                    .font(.headline)
-                                
-                                if !project.clientName.trimmed.isEmpty {
-                                    Text(project.clientName)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                if !project.location.trimmed.isEmpty {
-                                    Text(project.location)
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
-                    .onDelete(perform: store.deleteProjects)
                 }
             }
             .navigationTitle("Projects")
