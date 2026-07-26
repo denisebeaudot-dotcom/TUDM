@@ -153,7 +153,8 @@ extension WallSpec {
         // Segment chain must sum to totalWidth within tolerance.
         let sum = segmentTotal
         let delta = sum - totalWidth
-        if abs(delta) > 0.01 {
+        let chainMismatch = abs(delta) > 0.01
+        if chainMismatch {
             let sign = delta > 0 ? "over" : "under"
             issues.append(ValidationIssue(
                 severity: .error,
@@ -167,6 +168,32 @@ extension WallSpec {
             let segLabel = segment.label.isEmpty ? "segment \(index + 1)" : segment.label
             let segSubject = "\(wallLabel) · \(segLabel)"
             issues.append(contentsOf: segment.validate(subject: segSubject, ceilingHeight: ceilingHeight))
+        }
+        
+        // G3 — cumulative station readout when the chain doesn't sum correctly.
+        // Silent otherwise so we don't spam the banner in the happy path.
+        if chainMismatch {
+            var cursor: Double = 0
+            for (index, segment) in segments.enumerated() {
+                let segLabel = segment.label.isEmpty ? "segment \(index + 1)" : segment.label
+                let segSubject = "\(wallLabel) · \(segLabel)"
+                let start = cursor
+                let width = segment.resolvedWidth
+                let end = start + width
+                issues.append(ValidationIssue(
+                    severity: .warning,
+                    message: "station \(String(format: "%.2f", start))-\(String(format: "%.2f", end)) (width \(String(format: "%.2f", width)))",
+                    subject: segSubject
+                ))
+                cursor = end
+            }
+            let finalDelta = cursor - totalWidth
+            let finalSign = finalDelta > 0 ? "over" : "under"
+            issues.append(ValidationIssue(
+                severity: .warning,
+                message: "final cursor \(String(format: "%.2f", cursor))in vs declared totalWidth \(String(format: "%.2f", totalWidth))in — \(String(format: "%.2f", abs(finalDelta)))in \(finalSign).",
+                subject: wallLabel
+            ))
         }
         
         return issues
