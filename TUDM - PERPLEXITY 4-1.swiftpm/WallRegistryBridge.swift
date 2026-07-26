@@ -172,6 +172,7 @@ extension WallRegistryEnvelope.WallSegmentKind {
         case .windowUnit: self = .window
         case .door: self = .door
         case .opening: self = .opening
+        case .alcoveOpening: self = .opening
         case .wall, .wallSpace: self = .wall
         case .beam, .baseboard, .crown: self = .unknown
         }
