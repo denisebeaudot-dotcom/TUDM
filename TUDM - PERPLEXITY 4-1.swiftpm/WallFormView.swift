@@ -482,6 +482,9 @@ struct WallFormView: View {
                         Label("Export via Share Sheet", systemImage: "square.and.arrow.up")
                     }
                 }
+                
+                // Photoreal renders: preset, one-tap package, history, canonical pin
+                WallPhotorealSection(wall: previewWall.locked, defaults: effectiveDefaults)
             }
             .environment(\.editMode, $editMode)
             .navigationTitle(mode.title)
