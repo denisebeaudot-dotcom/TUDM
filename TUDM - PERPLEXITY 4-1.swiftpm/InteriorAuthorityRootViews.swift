@@ -375,6 +375,7 @@ struct RoomDetailView: View {
     @State private var showingChainEntry = false
     @State private var showingNewAlcove = false
     @State private var editingAlcove: RoomAlcove?
+    @State private var previewingAlcove: RoomAlcove?
     
     private var projectIndex: Int? {
         store.projects.firstIndex(where: { $0.id == projectID })
@@ -700,6 +701,20 @@ struct RoomDetailView: View {
                     }
                     .interactiveDismissDisabled()
                 }
+                .sheet(item: $previewingAlcove) { alcove in
+                    NavigationStack {
+                        AlcoveRealityPreview(alcove: alcove.locked)
+                            .navigationTitle(alcove.name.isEmpty ? "Alcove 3D" : alcove.name)
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Done") {
+                                        previewingAlcove = nil
+                                    }
+                                }
+                            }
+                    }
+                }
             } else {
                 ContentUnavailableView("Project Missing", systemImage: "folder.badge.questionmark")
             }
@@ -731,6 +746,16 @@ struct RoomDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
+                Button {
+                    previewingAlcove = alcove
+                } label: {
+                    Label("3D View", systemImage: "cube.transparent")
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
             }
             
             Text(payloadDescription(alcove.payload))
