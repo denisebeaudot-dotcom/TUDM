@@ -107,16 +107,6 @@ struct InteriorAuthorityRootView: View {
                     }
                 }
                 
-                Section("Render Composer") {
-                    NavigationLink {
-                        RenderComposerView()
-                    } label: {
-                        Label("Style + Persona Composer", systemImage: "paintpalette")
-                    }
-                    Text("Build a Style DNA and Persona from picker catalogs, run the compatibility guardrail, and export the PART B prompt block ready to paste into the ChatGPT recipe.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             .navigationTitle("Projects")
             .navigationDestination(for: InteriorRoute.self) { route in
