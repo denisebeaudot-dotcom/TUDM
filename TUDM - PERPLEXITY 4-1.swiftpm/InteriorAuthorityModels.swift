@@ -9,6 +9,9 @@ struct Project: Identifiable, Codable, Hashable {
     var location: String
     var notes: String
     var rooms: [Room]
+    /// Free-text notes per design-process phase, keyed by DesignPhase.rawValue.
+    /// Optional so old projects decoded from JSON without this field still work.
+    var phaseNotes: [String: String]?
     
     init(
         id: UUID = UUID(),
@@ -16,7 +19,8 @@ struct Project: Identifiable, Codable, Hashable {
         clientName: String = "",
         location: String = "",
         notes: String = "",
-        rooms: [Room] = []
+        rooms: [Room] = [],
+        phaseNotes: [String: String]? = nil
     ) {
         self.id = id
         self.name = name
@@ -24,6 +28,7 @@ struct Project: Identifiable, Codable, Hashable {
         self.location = location
         self.notes = notes
         self.rooms = rooms
+        self.phaseNotes = phaseNotes
     }
 }
 

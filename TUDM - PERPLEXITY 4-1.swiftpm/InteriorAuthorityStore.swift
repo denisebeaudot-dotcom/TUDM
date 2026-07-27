@@ -41,6 +41,21 @@ final class InteriorAuthorityStore {
         save()
     }
     
+    /// Set (or clear) the free-text note for a design-process phase on a project.
+    /// Passing an empty string clears the entry.
+    func setPhaseNote(projectID: UUID, phaseKey: String, note: String) {
+        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        var dict = projects[index].phaseNotes ?? [:]
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            dict.removeValue(forKey: phaseKey)
+        } else {
+            dict[phaseKey] = note
+        }
+        projects[index].phaseNotes = dict.isEmpty ? nil : dict
+        save()
+    }
+    
     func addRoom(to projectID: UUID, draft: RoomDraft) {
         guard let projectIndex = projects.firstIndex(where: { $0.id == projectID }) else { return }
         

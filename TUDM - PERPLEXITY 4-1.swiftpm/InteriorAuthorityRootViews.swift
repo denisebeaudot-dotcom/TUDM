@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 enum InteriorRoute: Hashable {
     case project(UUID)
+    case designProcess(projectID: UUID)
     case room(projectID: UUID, roomID: UUID)
 }
 
@@ -122,6 +123,8 @@ struct InteriorAuthorityRootView: View {
                 switch route {
                 case .project(let projectID):
                     ProjectDetailView(projectID: projectID)
+                case .designProcess(let projectID):
+                    DesignProcessView(projectID: projectID)
                 case .room(let projectID, let roomID):
                     RoomDetailView(projectID: projectID, roomID: roomID)
                 }
@@ -308,6 +311,27 @@ struct ProjectDetailView: View {
                                     .font(.headline)
                                 Text(project.notes)
                                     .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    
+                    Section("Design Process") {
+                        NavigationLink(value: InteriorRoute.designProcess(projectID: projectID)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "list.bullet.rectangle.portrait")
+                                    .font(.title2)
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: 32)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Design Process")
+                                        .font(.headline)
+                                    Text("12 phases across Groundwork, Design, Workboards, Execution.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                             .padding(.vertical, 4)
                         }
