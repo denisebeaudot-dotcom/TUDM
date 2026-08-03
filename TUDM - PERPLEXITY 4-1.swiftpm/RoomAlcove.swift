@@ -1,3 +1,10 @@
+// ============================================================
+// DENISEBEAUDOT — BUILD MARKER — alcove bump-out + point C
+// 2026-08-03 18:27 EDT   branch: alcove-bumpout-point-c
+// If you cannot see this line at the very top, this file did
+// not load or the paste was truncated.
+// ============================================================
+
 import Foundation
 
 // MARK: - RoomAlcove
@@ -8,6 +15,45 @@ import Foundation
 // immutability contract applies: the alcove's declared geometry is the truth;
 // walls REFERENCE alcoves via .alcoveOpening segments, they do not own them.
 
+/// Which side of the host walls an alcove body occupies.
+///
+/// An INWARD alcove is a recess carved out of the room — it removes floor area
+/// and both legs are measured inside the envelope.
+///
+/// An OUTWARD alcove is a bump-out. The body is tacked onto the far side of one
+/// host wall, it ADDS floor area, and the host wall's segment across the
+/// opening is removed. The room outline becomes an L. The leg on the other wall
+/// is that wall's extension past the shared corner, not a run inside the room.
+enum AlcoveProjection: String, Codable, Hashable, CaseIterable {
+    /// Recess into the room. Original behaviour.
+    case inward
+    /// Bump-out through wallA. The wallA segment across the opening is removed.
+    case outwardThroughWallA
+    /// Bump-out through wallB. The wallB segment across the opening is removed.
+    case outwardThroughWallB
+    
+    var label: String {
+        switch self {
+        case .inward: return "Recess (into room)"
+        case .outwardThroughWallA: return "Bump-out through Wall A"
+        case .outwardThroughWallB: return "Bump-out through Wall B"
+        }
+    }
+    
+    /// True when the alcove adds floor area rather than removing it.
+    var isBumpOut: Bool { self != .inward }
+    
+    /// For a bump-out, whether wallA is the host wall being opened.
+    /// Nil for an inward recess, which opens no wall.
+    var hostWallIsA: Bool? {
+        switch self {
+        case .inward: return nil
+        case .outwardThroughWallA: return true
+        case .outwardThroughWallB: return false
+        }
+    }
+}
+
 /// Which two walls a corner alcove sits between, and how far it extends along each.
 ///
 /// The alcove is anchored at the corner shared by wallA and wallB. `footprintA`
@@ -15,14 +61,59 @@ import Foundation
 /// `footprintB` is the equivalent along wallB. Together they define the platform
 /// footprint at the corner.
 ///
-/// Example (Family Room wood stove):
+/// Example (Family Room wood stove, inward recess):
 ///   wallA = Wall 3 id, footprintA = 53.5
 ///   wallB = Wall 4 id, footprintB = 40.75
+///
+/// Example (Ina's Room bump-out through W3):
+///   wallA = Wall 3 id, footprintA = 26.0
+///   wallB = Wall 4 id, footprintB = 15.0
+///   backWallC = 26.0, projection = .outwardThroughWallA
 struct AlcoveCornerAnchor: Codable, Hashable {
     var wallA: UUID
     var footprintA: Double
     var wallB: UUID
     var footprintB: Double
+    
+    /// Step 7c — the declared BACK WALL length (point C), in inches.
+    ///
+    /// C starts at the endpoint of the LONGER of the two legs and runs
+    /// perpendicular to that wall. Its far end is the derived third point D.
+    /// The footprint then closes as the quadrilateral O -> A -> D -> B.
+    /// See AlcovePlanGeometry.swift for the full rule.
+    ///
+    /// `nil` means the back wall has not been measured yet. Every consumer
+    /// treats nil as "fall back to the short leg", which reproduces the plain
+    /// rectangular footprint the app drew before point C existed — so locked
+    /// alcoves authored earlier are never silently re-drawn. Declaring a C is
+    /// always an explicit, deliberate act.
+    var backWallC: Double? = nil
+    
+    /// Which side of the host walls the alcove body sits on.
+    ///
+    /// `.inward` is the original behaviour: the alcove eats into the room, like
+    /// the family-room wood stove corner. `.outwardThroughWallA` / `.WallB` are
+    /// bump-outs — the body is tacked onto the OUTSIDE of the named wall and
+    /// adds floor area. In a bump-out the host wall's segment across the
+    /// opening is removed, and the other leg is that wall's extension past the
+    /// shared corner.
+    ///
+    /// Defaults to `.inward` so every alcove authored before bump-outs existed
+    /// keeps its current geometry.
+    var projection: AlcoveProjection = .inward
+    
+    /// How far along the host wall the opening starts, measured from the anchor
+    /// end, in inches. Zero — the default — pins the alcove to the shared
+    /// corner, which is the original behaviour.
+    ///
+    /// A positive offset floats the alcove out into the middle of the host wall.
+    /// The body then has wall on BOTH sides of the opening, and the leg on the
+    /// other wall stops being a run along that wall: it becomes a free side
+    /// return. `isFloating` reports which case you are in.
+    ///
+    /// Only meaningful for bump-outs, which have a single host wall. An inward
+    /// corner recess ignores it.
+    var openingOffset: Double = 0
     
     /// Which end of each wall the anchor sits at. A wall runs left→right in its
     /// own coordinates; a corner alcove terminates at one end. `.corner` means
@@ -34,6 +125,69 @@ struct AlcoveCornerAnchor: Codable, Hashable {
     enum WallEnd: String, Codable, Hashable {
         case origin
         case corner
+    }
+    
+    init(
+        wallA: UUID,
+        footprintA: Double,
+        wallB: UUID,
+        footprintB: Double,
+        backWallC: Double? = nil,
+        projection: AlcoveProjection = .inward,
+        openingOffset: Double = 0,
+        anchorA: WallEnd = .corner,
+        anchorB: WallEnd = .corner
+    ) {
+        self.wallA = wallA
+        self.footprintA = footprintA
+        self.wallB = wallB
+        self.footprintB = footprintB
+        self.backWallC = backWallC
+        self.projection = projection
+        self.openingOffset = openingOffset
+        self.anchorA = anchorA
+        self.anchorB = anchorB
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case wallA, footprintA, wallB, footprintB, backWallC, projection, openingOffset, anchorA, anchorB
+    }
+    
+    /// Explicit decode so anchors written before point C existed still load.
+    /// Every optional-or-defaulted key goes through decodeIfPresent; only the
+    /// two wall references and two footprints are genuinely required.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.wallA = try c.decode(UUID.self, forKey: .wallA)
+        self.footprintA = try c.decode(Double.self, forKey: .footprintA)
+        self.wallB = try c.decode(UUID.self, forKey: .wallB)
+        self.footprintB = try c.decode(Double.self, forKey: .footprintB)
+        self.backWallC = try c.decodeIfPresent(Double.self, forKey: .backWallC)
+        self.projection = try c.decodeIfPresent(AlcoveProjection.self, forKey: .projection) ?? .inward
+        self.openingOffset = try c.decodeIfPresent(Double.self, forKey: .openingOffset) ?? 0
+        self.anchorA = try c.decodeIfPresent(WallEnd.self, forKey: .anchorA) ?? .corner
+        self.anchorB = try c.decodeIfPresent(WallEnd.self, forKey: .anchorB) ?? .corner
+    }
+    
+    /// Encode C only when it has been declared, so untouched alcoves keep a
+    /// byte-identical JSON shape and diffs stay readable.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(wallA, forKey: .wallA)
+        try c.encode(footprintA, forKey: .footprintA)
+        try c.encode(wallB, forKey: .wallB)
+        try c.encode(footprintB, forKey: .footprintB)
+        try c.encodeIfPresent(backWallC, forKey: .backWallC)
+        // Only write projection when it departs from the default, so untouched
+        // inward alcoves keep a byte-identical JSON shape.
+        if projection != .inward {
+            try c.encode(projection, forKey: .projection)
+        }
+        if openingOffset != 0 {
+            try c.encode(openingOffset, forKey: .openingOffset)
+        }
+        try c.encode(anchorA, forKey: .anchorA)
+        try c.encode(anchorB, forKey: .anchorB)
     }
 }
 

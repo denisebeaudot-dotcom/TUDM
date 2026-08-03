@@ -1,3 +1,10 @@
+// ============================================================
+// DENISEBEAUDOT — BUILD MARKER — alcove bump-out + point C
+// 2026-08-03 18:27 EDT   branch: alcove-bumpout-point-c
+// If you cannot see this line at the very top, this file did
+// not load or the paste was truncated.
+// ============================================================
+
 import SwiftUI
 
 // MARK: - AlcoveDraft
@@ -18,6 +25,20 @@ struct AlcoveDraft: Hashable {
     var footprintB: Double = 0
     var anchorAEnd: AlcoveCornerAnchor.WallEnd = .corner
     var anchorBEnd: AlcoveCornerAnchor.WallEnd = .corner
+    
+    // Plan points — back wall C (Step 7c).
+    // When `backWallCIsAuto` is true the alcove stores nil for C and every
+    // renderer falls back to the short leg, which is the plain rectangle.
+    // Turning the toggle off promotes C to authored, measured geometry.
+    var backWallCIsAuto: Bool = true
+    var backWallC: Double = 0
+    
+    /// Recess into the room, or bump-out tacked onto the far side of a wall.
+    var projection: AlcoveProjection = .inward
+    
+    /// Distance along the host wall from the anchor end to the start of the
+    /// opening. Zero keeps the alcove in the corner.
+    var openingOffset: Double = 0
     
     // Platform
     var platformHeight: Double = 12
@@ -78,6 +99,17 @@ struct AlcoveDraft: Hashable {
         self.anchorAEnd = alcove.anchor.anchorA
         self.anchorBEnd = alcove.anchor.anchorB
         
+        self.projection = alcove.anchor.projection
+        self.openingOffset = alcove.anchor.openingOffset
+        
+        if let c = alcove.anchor.backWallC, c > 0 {
+            self.backWallCIsAuto = false
+            self.backWallC = c
+        } else {
+            self.backWallCIsAuto = true
+            self.backWallC = max(alcove.anchor.footprintA, alcove.anchor.footprintB)
+        }
+        
         self.platformHeight = alcove.platform.height
         self.platformShape = alcove.platform.shape
         self.platformMaterial = alcove.platform.material
@@ -120,12 +152,49 @@ struct AlcoveDraft: Hashable {
         self.isLocked = alcove.isLocked
     }
     
+    // MARK: Derived plan geometry
+    
+    /// C reads against the OPENING, so the long leg is the reference: C equal
+    /// to the long leg squares point D off into a plain rectangle.
+    var shortLegLength: Double { min(footprintA, footprintB) }
+    var longLegLength: Double { max(footprintA, footprintB) }
+    
+    /// The C actually used for drawing, honouring the auto toggle.
+    var resolvedBackWallC: Double {
+        backWallCIsAuto ? longLegLength : backWallC
+    }
+    
+    /// Live footprint preview for the form readout. Wall identity does not
+    /// affect plan geometry, so placeholder ids are fine here — this value is
+    /// never persisted.
+    var planFootprintPreview: AlcovePlanFootprint? {
+        guard footprintA > 0, footprintB > 0 else { return nil }
+        let probe = AlcoveCornerAnchor(
+            wallA: wallAID ?? UUID(),
+            footprintA: footprintA,
+            wallB: wallBID ?? UUID(),
+            footprintB: footprintB,
+            backWallC: backWallCIsAuto ? nil : backWallC,
+            projection: projection,
+            openingOffset: openingOffset,
+            anchorA: anchorAEnd,
+            anchorB: anchorBEnd
+        )
+        return probe.planFootprint
+    }
+    
     var isValid: Bool {
         // Both walls must be selected and distinct.
         guard let a = wallAID, let b = wallBID else { return false }
         if a == b { return false }
         // Footprints must be positive.
         if footprintA <= 0 || footprintB <= 0 { return false }
+        // A declared back wall must be positive. It is allowed to exceed the
+        // long leg — that is a back-widening recess, which is buildable and
+        // only warrants a warning, not a block.
+        if !backWallCIsAuto {
+            if backWallC <= 0 { return false }
+        }
         // Positive dimensions.
         if platformHeight < 0 { return false }
         if columnAWidth <= 0 || columnADepth <= 0 || columnAHeight <= 0 { return false }
@@ -142,6 +211,9 @@ struct AlcoveDraft: Hashable {
             footprintA: footprintA,
             wallB: wallB,
             footprintB: footprintB,
+            backWallC: backWallCIsAuto ? nil : backWallC,
+            projection: projection,
+            openingOffset: openingOffset,
             anchorA: anchorAEnd,
             anchorB: anchorBEnd
         )
@@ -318,6 +390,40 @@ struct AlcoveFormView: View {
                     Text("Corner alcoves span two walls at their shared corner. Footprint is measured from the anchor end along each wall.")
                 }
                 
+                Section {
+                    Picker("Projection", selection: $draft.projection) {
+                        ForEach(AlcoveProjection.allCases, id: \.self) { p in
+                            Text(p.label).tag(p)
+                        }
+                    }
+                    
+                    if draft.projection.isBumpOut {
+                        StepperFieldRow(
+                            title: "Offset along host wall",
+                            value: $draft.openingOffset,
+                            step: 1
+                        )
+                    }
+                    
+                    Toggle("Derive C from long leg", isOn: $draft.backWallCIsAuto)
+                    
+                    if !draft.backWallCIsAuto {
+                        StepperFieldRow(title: "Back Wall C", value: $draft.backWallC, step: 0.25)
+                        
+                        if let issue = backWallIssueText {
+                            Text(issue)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    
+                    planPointsReadout
+                } header: {
+                    Text("Plan Points \u{2014} A / B / C")
+                } footer: {
+                    Text("Projection sets which side of the walls the body sits on. A recess eats into the room; a bump-out is tacked onto the far side of the host wall, adds floor area, and removes that wall's segment across the opening \u{2014} the room outline becomes an L.\n\nC is the back wall. It starts at the endpoint of the shorter leg and runs parallel to the longer leg's wall, so C reads against the opening. Its far end is the derived point D, which closes back onto the longer leg. The footprint is O \u{2192} A \u{2192} D \u{2192} B.\n\nOffset slides a bump-out along its host wall; zero keeps it in the corner. For a bump-out the Back Element style shapes the outside envelope \u{2014} Flat gives a square box, Convex a bow, Mitered a canted bay. For a recess it stays a feature drawn inside the footprint, unchanged.")
+                }
+                
                 Section("Platform") {
                     StepperFieldRow(title: "Height", value: $draft.platformHeight, step: 1)
                     Picker("Shape", selection: $draft.platformShape) {
@@ -421,6 +527,113 @@ struct AlcoveFormView: View {
                 }
             }
         }
+    }
+    
+    // MARK: Plan points readout
+    
+    /// Live derived geometry. Everything here recomputes from the two legs plus
+    /// C, so the user can see D move before committing anything to the model.
+    @ViewBuilder
+    private var planPointsReadout: some View {
+        if let fp = draft.planFootprintPreview {
+            VStack(alignment: .leading, spacing: 6) {
+                pointRow("O", fp.pointO, note: "shared corner")
+                pointRow("A", fp.pointA, note: "wall A leg")
+                pointRow("B", fp.pointB, note: "wall B leg")
+                pointRow("D", fp.pointD, note: "derived")
+                
+                Divider().padding(.vertical, 2)
+                
+                LabeledContent("Back wall C") {
+                    Text("\(inches(fp.backWallC)) \u{00B7} from point \(fp.shortLegLabel)")
+                        .monospacedDigit()
+                }
+                LabeledContent("Closing face") {
+                    Text(inches(fp.closingFaceLength))
+                        .monospacedDigit()
+                }
+                if !fp.isRectangular {
+                    LabeledContent("Cant") {
+                        Text(String(format: "%.1f\u{00B0}", fp.closingFaceCantDegrees))
+                            .monospacedDigit()
+                    }
+                }
+                LabeledContent(fp.projection.isBumpOut ? "Floor area added" : "Floor area removed") {
+                    Text(String(format: "%.2f sq ft", fp.area / 144))
+                        .monospacedDigit()
+                }
+                
+                if fp.projection.isBumpOut {
+                    LabeledContent("Back wall shape") {
+                        Text(draft.backStyle.rawValue)
+                    }
+                    LabeledContent("Sits") {
+                        Text(fp.isFloating
+                             ? "Mid-wall, \(inches(fp.openingOffset)) from anchor"
+                             : "At the shared corner")
+                    }
+                    LabeledContent("Wall removed") {
+                        Text(inches(fp.removedWallWidth))
+                            .monospacedDigit()
+                    }
+                    if let returns = fp.sideReturns {
+                        LabeledContent("Side returns") {
+                            Text("\(inches(returns.first)) + \(inches(returns.second))")
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                
+                Text(planVerdict(fp))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 2)
+            }
+            .font(.footnote)
+        } else {
+            Text("Enter both wall footprints to resolve the plan points.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    /// Plain-language verdict on the resolved footprint shape.
+    private func planVerdict(_ fp: AlcovePlanFootprint) -> String {
+        if fp.isRectangular {
+            return fp.projection.isBumpOut
+                ? "Rectangular bump-out \u{2014} the room outline becomes an L."
+                : "Rectangular recess \u{2014} D squares off against the long leg."
+        }
+        if fp.widensTowardBack {
+            return "Recess widens toward the back \u{2014} C runs past point \(fp.longLegLabel)."
+        }
+        return "L / splayed footprint \u{2014} face D to \(fp.longLegLabel) cants."
+    }
+    
+    private func pointRow(_ label: String, _ point: CGPoint, note: String) -> some View {
+        LabeledContent(label) {
+            Text("(\(inches(Double(point.x))), \(inches(Double(point.y))))  \(note)")
+                .monospacedDigit()
+        }
+    }
+    
+    private func inches(_ value: Double) -> String {
+        String(format: "%.2f\u{201D}", value)
+    }
+    
+    /// Inline warning when a declared C cannot physically close. Save is
+    /// blocked by `draft.isValid` in this case, unlike the footprint warnings
+    /// which only advise.
+    private var backWallIssueText: String? {
+        guard !draft.backWallCIsAuto else { return nil }
+        if draft.backWallC <= 0 {
+            return "Back wall C must be greater than 0."
+        }
+        if draft.backWallC > draft.longLegLength + 0.01 {
+            let over = draft.backWallC - draft.longLegLength
+            return "Back wall C is \(inches(over)) wider than the opening (\(inches(draft.longLegLength))). The recess undercuts the wall it sits in."
+        }
+        return nil
     }
     
     private var saveButtonTitle: String {
