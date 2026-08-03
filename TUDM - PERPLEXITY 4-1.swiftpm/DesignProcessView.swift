@@ -339,20 +339,52 @@ private struct PhaseRow: View {
     private var destination: some View {
         switch phase.routesTo {
         case .personaPicker:
-            PersonaPickerView()
-                .navigationTitle(phase.title)
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
+            PersonaPhaseHost()
         case .stylePicker:
-            StylePickerView()
-                .navigationTitle(phase.title)
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
+            StylePhaseHost()
         case .placeholder:
             PhasePlaceholderView(projectID: projectID, phase: phase)
         }
+    }
+}
+
+// MARK: - Phase Hosts
+//
+// The pickers require @Binding state owned by a parent. These lightweight host
+// views own that state locally for the current navigation session. Persistence
+// per-project comes in a later step.
+
+private struct PersonaPhaseHost: View {
+    @State private var selection: PersonaSelection
+    @State private var mode: PersonaBuildMode = .guided
+    @State private var manualBlock: String = ""
+    
+    init() {
+        // Seed with the first archetype so the picker always has a valid base.
+        let firstArchetype = PersonaArchetypeCatalog.all.first!
+        _selection = State(initialValue: PersonaSelection(archetype: firstArchetype))
+    }
+    
+    var body: some View {
+        PersonaPickerView(
+            selection: $selection,
+            mode: $mode,
+            manualBlock: $manualBlock
+        )
+    }
+}
+
+private struct StylePhaseHost: View {
+    @State private var selection: StyleSelection
+    
+    init() {
+        // Seed with the first family so the picker always has a valid base.
+        let firstFamily = StyleFamilyDNACatalog.all.first!
+        _selection = State(initialValue: StyleSelection(family: firstFamily))
+    }
+    
+    var body: some View {
+        StylePickerView(selection: $selection)
     }
 }
 
